@@ -5,7 +5,7 @@ seed: 42
 # https://skrl.readthedocs.io/en/latest/api/utils/model_instantiators.html
 models:
   separate: False
-  policy:  # see gaussian_model parameters
+  policy:
     class: GaussianMixin
     clip_actions: False
     clip_log_std: True
@@ -14,18 +14,38 @@ models:
     initial_log_std: 0.0
     network:
       - name: net
-        input: OBSERVATIONS
-        layers: [32, 32]
-        activations: elu
+        input: STATES  # skrl handles the [8, 480, 640] shape automatically if defined in env
+        layers:
+          # Conv Layer 1: [8, 480, 640] -> [32, 119, 159]
+          - conv2d: {out_channels: 32, kernel_size: 8, stride: 4}
+          # Conv Layer 2: [32, 119, 159] -> [64, 58, 78]
+          - conv2d: {out_channels: 64, kernel_size: 4, stride: 2}
+          # Flatten to a vector before the dense layer
+          - flatten
+          # Dense layer for feature fusion
+          - linear: {out_features: 512}
+        activations:
+          - elu
+          - elu
+          - None
+          - elu
     output: ACTIONS
-  value:  # see deterministic_model parameters
+  value:
     class: DeterministicMixin
     clip_actions: False
     network:
       - name: net
-        input: OBSERVATIONS
-        layers: [32, 32]
-        activations: elu
+        input: STATES
+        layers:
+          - conv2d: {out_channels: 32, kernel_size: 8, stride: 4}
+          - conv2d: {out_channels: 64, kernel_size: 4, stride: 2}
+          - flatten
+          - linear: {out_features: 512}
+        activations:
+          - elu
+          - elu
+          - None
+          - elu
     output: ONE
 
 
@@ -40,9 +60,9 @@ memory:
 # https://skrl.readthedocs.io/en/latest/api/agents/ppo.html
 agent:
   class: PPO
-  rollouts: 32
-  learning_epochs: 8
-  mini_batches: 8
+  rollouts: 250
+  learning_epochs: 1000
+  mini_batches: 1
   discount_factor: 0.99
   lambda: 0.95
   learning_rate: 5.0e-04
@@ -76,5 +96,5 @@ agent:
 # https://skrl.readthedocs.io/en/latest/api/trainers/sequential.html
 trainer:
   class: SequentialTrainer
-  timesteps: 4800
+  timesteps: 48000
   environment_info: log

@@ -24,11 +24,15 @@ import isaaclab.utils.math as math_utils
 from isaaclab.sensors import Camera, CameraCfg
 from isaaclab.assets import AssetBase, AssetBaseCfg
 
+from isaacsim.core.utils.extensions import enable_extension
+#enable_extension("isaacsim.debug_draw")
+import isaacsim.util.debug_draw._debug_draw as _debug_draw
+
 
 class IsaacLabJetbotOrinEnv(DirectRLEnv):
     cfg: IsaacLabJetbotOrinEnvCfg
 
-    def __init__(self, cfg: IsaacLabJetbotOrinEnvCfg, render_mode: str | None = None, **kwargs):
+    def __init__(self, cfg: IsaacLabJetbotOrinEnv, render_mode: str | None = None, **kwargs):
         super().__init__(cfg, render_mode, **kwargs)
         self.dof_idx, _ = self.robot.find_joints(self.cfg.dof_names)
 
@@ -82,8 +86,10 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         # add road lane
         curve_prim = UsdGeom.BasisCurves.Get(self.sim.stage, "/World/envs/env_0/Track/Road_Lane_1")
         local_points = list(curve_prim.GetPointsAttr().Get())
+        self.draw = _debug_draw.acquire_debug_draw_interface()
         
         # add waypoint
+        self.debug_waypoints = True
         all_env_points_list = []
 
         # Scale factor of 1/10
@@ -101,6 +107,10 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
             colors = [(0, 1, 0, 1)] * len(starts)  # Green
             widths = [2.0] * len(starts)
             
+            # Render the lines
+            if self.debug_waypoints:
+                self.draw.draw_lines(starts, ends, colors, widths)
+
             all_env_points_list.extend(world_points)
 
         self.lane_points_tensor = torch.stack([torch.stack(env_points) for env_points in all_env_points_list])
@@ -113,8 +123,13 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         self.current_waypoint_idx = 0
 
     def _calculate_cloeset_waypoint(self):
+        if self.debug_waypoints:
+            self.draw.clear_points()
+
         all_points_flat = self.lane_points_tensor.view(-1, 3).cpu().numpy().tolist()
         bg_colors = [[1.0, 1.0, 0.0, 0.3]] * len(all_points_flat) # Yellow (Faded)
+        if self.debug_waypoints:
+            self.draw.draw_points(all_points_flat, bg_colors, [15.0] * len(all_points_flat))
 
         # 1. Get current robot state
         robot_pos = self.robot.data.root_pos_w[:, :2]
@@ -147,6 +162,10 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
             # Bright Blue (RGBA) as per your color choice
             colors = [[0.0, 0.0, 1.0, 1.0]] * num_front 
             sizes = [15.0] * num_front
+
+            if self.debug_waypoints:
+                # 5. Render
+                self.draw.draw_points(front_points_list, colors, sizes)
 
         if self.active_target_pos is not None:
             distances = torch.norm(self.active_target_pos - robot_pos, dim=-1) # [num_envs]
@@ -195,7 +214,11 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
             point_colors = [[1.0, 0.0, 0.0, 1.0]] * self.num_envs # Bright Red
             point_sizes = [20.0] * self.num_envs # Slightly larger to stand out
             
-        return needs_new_target, distances
+            if self.debug_waypoints:
+                # 5. Render all target points at once
+                self.draw.draw_points(targets_3d_list, point_colors, point_sizes)
+
+        return needs_new_target
 
     def _move_robot_to_cloeset_waypoint(self):
         # --- 3. Calculate Steering for ALL Robots ---
@@ -256,9 +279,15 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         self.velocity = self.robot.data.root_com_vel_w 
         self.forwards = math_utils.quat_apply(self.robot.data.root_link_quat_w, self.robot.data.FORWARD_VEC_B)
 
+        #dot = torch.sum(self.forwards * self.commands, dim=-1, keepdim=True)
+        #cross = torch.cross(self.forwards, self.commands, dim=-1)[:,-1].reshape(-1,1)
         forward_speed = self.robot.data.root_com_lin_vel_b[:,0].reshape(-1,1)
+        #obs = torch.hstack((dot, cross, forward_speed))
 
+        #obs = torch.hstack((forward_speed))
         obs = forward_speed
+        # obs.shape:  torch.Size([2, 2])
+        # left_camera_image.shape:  (2, 480, 3)
 
         left_camera_image = self.scene["left_camera"].data.output["rgb"]
         right_camera_image = self.scene["right_camera"].data.output["rgb"]
@@ -303,8 +332,16 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         return observations
 
     def _get_rewards(self) -> torch.Tensor:
-        needs_new_target, distances = self._calculate_cloeset_waypoint()
-        print("distances: ", distances)
+        needs_new_target = self._calculate_cloeset_waypoint()
+
+        self.draw.clear_points()
+        if self.active_target_pos is not None:
+            z_offsets = torch.full((self.num_envs, 1), -0.2, device=self.device)
+            targets_3d_tensor = torch.cat([self.active_target_pos, z_offsets], dim=-1)
+            targets_3d_list = targets_3d_tensor.cpu().numpy().tolist()
+            point_colors = [[1.0, 0.0, 0.0, 1.0]] * self.num_envs
+            point_sizes = [20.0] * self.num_envs
+            self.draw.draw_points(targets_3d_list, point_colors, point_sizes)
 
         total_reward = needs_new_target.float().unsqueeze(1)
 

@@ -1,0 +1,65 @@
+{
+    "version": "1.0",
+    "file_records": [
+        {
+            "source_url": "/media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/omniverse_asset/duckie_town/textures/3way_left_1.png",
+            "source_hash": "8e2136d483abee54e5bbff42196c6704c7f878f7",
+            "target_url": "./textures/3way_left_1.png",
+            "target_hash": "b17e59f437124cfbc201ca55b7fdef02ab696d2d"
+        },
+        {
+            "source_url": "/media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/omniverse_asset/duckie_town/textures/3way_left_2.png",
+            "source_hash": "22010f5b915997be03cff1fef3d9e4cd5e12787f",
+            "target_url": "./textures/3way_left_2.png",
+            "target_hash": "e160fe97fc7bda584c8c0b072477c6640ef965be"
+        },
+        {
+            "source_url": "/media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/omniverse_asset/duckie_town/textures/3way_right_1.png",
+            "source_hash": "e8ba50e1b87648e49647ceb83bc0a7a0518c6600",
+            "target_url": "./textures/3way_right_1.png",
+            "target_hash": "80bcf7050c2dc8d2647471346d3bbd6832b1a047"
+        },
+        {
+            "source_url": "/media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/omniverse_asset/duckie_town/textures/4way_1.png",
+            "source_hash": "2f736455f5112f41505a4a80d121789ac6ad220f",
+            "target_url": "./textures/4way_1.png",
+            "target_hash": "4412d0c0d07f2c1390704453d9d274d678489ff0"
+        },
+        {
+            "source_url": "/media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/omniverse_asset/duckie_town/textures/black_tile.png",
+            "source_hash": "fa9412ac7c60b142f7dc4e4f5ee9387e834b83e5",
+            "target_url": "./textures/black_tile.png",
+            "target_hash": "33c3d8f7cabf8e818147d3adb156ddfe443c216d"
+        },
+        {
+            "source_url": "/media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/omniverse_asset/duckie_town/textures/curve_left_1.png",
+            "source_hash": "ebf71efbb22f8cdfb716f5574278e7e5c3b6e2e4",
+            "target_url": "./textures/curve_left_1.png",
+            "target_hash": "8be959357368c08c6509cb8232da3b25fcaea05a"
+        },
+        {
+            "source_url": "/media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/omniverse_asset/duckie_town/textures/curve_left_3.png",
+            "source_hash": "066c9a2cdac96bcfb65afd854d5b3803a8fb773d",
+            "target_url": "./textures/curve_left_3.png",
+            "target_hash": "a8354682a23df682197375f6bf84150f6f5b6933"
+        },
+        {
+            "source_url": "/media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/omniverse_asset/duckie_town/textures/curve_left_4.png",
+            "source_hash": "e8a7356d504c1b6b71a711314384aa94f30abcf7",
+            "target_url": "./textures/curve_left_4.png",
+            "target_hash": "6e195d0b51165c5f01f57660bc77c1f30bbb1018"
+        },
+        {
+            "source_url": "/media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/omniverse_asset/duckie_town/textures/curve_right_1.png",
+            "source_hash": "329a6485d3aa43922ea1771dae180137e9d8745b",
+            "target_url": "./textures/curve_right_1.png",
+            "target_hash": "c36c614c5ce039ab836c07f42a152d08f5f5d84d"
+        },
+        {
+            "source_url": "/media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/omniverse_asset/duckie_town/textures/straight_1.png",
+            "source_hash": "60cb733c48097094169c10aa07af28d904c371ee",
+            "target_url": "./textures/straight_1.png",
+            "target_hash": "4b98bf2ad9d584cdfcf0296d7c207c8a871689f3"
+        }
+    ]
+}
