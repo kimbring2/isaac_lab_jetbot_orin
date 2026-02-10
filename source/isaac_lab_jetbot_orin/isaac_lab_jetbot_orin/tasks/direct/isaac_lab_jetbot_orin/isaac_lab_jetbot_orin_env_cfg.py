@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from gymnasium import spaces
+import gymnasium as gym
 import numpy as np
 import os
 
@@ -13,7 +14,7 @@ from isaaclab.assets import ArticulationCfg, AssetBaseCfg, RigidObjectCfg
 from isaaclab.envs import DirectRLEnvCfg
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sim import SimulationCfg
-from isaaclab.sensors import CameraCfg
+from isaaclab.sensors import CameraCfg, TiledCameraCfg
 from isaaclab.utils import configclass
 import isaaclab.sim as sim_utils
 #print("os.getcwd(): ", os.getcwd())
@@ -23,16 +24,17 @@ import isaaclab.sim as sim_utils
 class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
     # env
     decimation = 2
-    episode_length_s = 50.0
+    episode_length_s = 15.0
     
     # - spaces definition
-    action_space = 2
+    #action_space = 2
+    action_space = gym.spaces.Discrete(25)
     
     #observation_space = 3
     observation_space = spaces.Box(
         low=-np.inf, 
         high=np.inf, 
-        shape=(7, 64, 64), 
+        shape=(3, 64, 64), 
         dtype=np.float32
     )
 
@@ -50,7 +52,7 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
         spawn=sim_utils.UsdFileCfg(
             #usd_path="/media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/isaac_lab_jetbot_orin/source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/starter_kit_track.usd",
             usd_path=usd_path,
-            scale=(0.1, 0.1, 0.1),
+            scale=(0.05, 0.05, 0.05),
             collision_props=sim_utils.CollisionPropertiesCfg(),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 kinematic_enabled=True, 
@@ -58,6 +60,35 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
             ),
         ),
         init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, -0.2)),
+    )
+
+    #Offset Translation: (-0.07616729313910534, 0.030207338855022945, -0.037841003795480666)
+    #Offset Rotation (Quat): (0.5792279653395693, 0.4055797876726387, 0.4055797876726388, 0.5792279653395691)
+
+    left_tiled_camera: TiledCameraCfg = TiledCameraCfg(
+        prim_path="/World/envs/env_.*/Robot/Body/tiled_camera_0",
+        offset=TiledCameraCfg.OffsetCfg(pos=(-0.07617, 0.02921, -0.03784), 
+                                        rot=(0.5792, 0.40558, 0.40558, 0.57923), 
+                                        convention="opengl"),
+        data_types=["rgb"],
+        spawn=sim_utils.PinholeCameraCfg(
+            focal_length=0.26, focus_distance=6.0, horizontal_aperture=2.4, clipping_range=(0.01, 20.0)
+        ),
+        width=640,
+        height=480,
+    )
+
+    right_tiled_camera: TiledCameraCfg = TiledCameraCfg(
+        prim_path="/World/envs/env_.*/Robot/Body/tiled_camera_1",
+        offset=TiledCameraCfg.OffsetCfg(pos=(-0.07617, 0.03021, -0.03784), 
+                                        rot=(0.5792, 0.40558, 0.40558, 0.57923), 
+                                        convention="opengl"),
+        data_types=["rgb"],
+        spawn=sim_utils.PinholeCameraCfg(
+            focal_length=0.26, focus_distance=6.0, horizontal_aperture=2.4, clipping_range=(0.01, 20.0)
+        ),
+        width=640,
+        height=480,
     )
     
     # robot(s)

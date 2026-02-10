@@ -14,7 +14,7 @@ from . import agents
 
 gym.register(
     id="Template-Isaac-Lab-Jetbot-Orin-Direct-v0",
-    entry_point=f"{__name__}.isaac_lab_jetbot_orin_env_debug:IsaacLabJetbotOrinEnv",
+    entry_point=f"{__name__}.isaac_lab_jetbot_orin_env:IsaacLabJetbotOrinEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.isaac_lab_jetbot_orin_env_cfg:IsaacLabJetbotOrinEnvCfg",

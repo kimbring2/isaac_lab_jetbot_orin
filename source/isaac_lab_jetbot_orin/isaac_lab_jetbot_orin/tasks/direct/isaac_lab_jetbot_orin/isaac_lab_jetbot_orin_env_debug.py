@@ -188,7 +188,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
             closest_front_idx = torch.argmin(front_dists, dim=-1) # [num_envs]
 
             # Add look-ahead (e.g., +3)
-            target_indices = (closest_front_idx + 3) % self.lane_points_tensor.shape[1]
+            target_indices = (closest_front_idx + 2) % self.lane_points_tensor.shape[1]
 
             # 3. Apply updates ONLY to envs that need them
             # We use advanced indexing to pull the correct points
@@ -197,7 +197,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
             # Update active targets for specific environments
             new_found_targets = self.lane_points_tensor[env_ids, target_indices[env_ids], :2]
             self.active_target_pos[env_ids] = new_found_targets
-
+        
         # Draw the visual markers for all active targets
         if self.active_target_pos is not None:
             # 1. Prepare Z-coordinates for all environments [num_envs, 1]
@@ -218,7 +218,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
                 # 5. Render all target points at once
                 self.draw.draw_points(targets_3d_list, point_colors, point_sizes)
 
-        return needs_new_target
+        return distances
 
     def _move_robot_to_cloeset_waypoint(self):
         # --- 3. Calculate Steering for ALL Robots ---
@@ -260,34 +260,25 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         actions = torch.stack([left_wheel, right_wheel], dim=-1) * 10.0
 
         # Apply the vectorized actions to the simulation
+        actions = torch.tensor([[0.0, 0.0]], device='cuda:0')
         self.robot.set_joint_velocity_target(actions, joint_ids=self.dof_idx)
 
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
         self.actions = actions.clone()
 
     def _apply_action(self) -> None:
-        '''
         if self.active_target_pos != None:
             self._move_robot_to_cloeset_waypoint()
         else:
            self.robot.set_joint_velocity_target(self.actions, joint_ids=self.dof_idx)
-        '''
-        #self.actions = torch.tensor([[-2.5, -2.5]], device='cuda:0')
-        self.robot.set_joint_velocity_target(self.actions * 10.0, joint_ids=self.dof_idx)
-
+        
     def _get_observations(self) -> dict:
         self.velocity = self.robot.data.root_com_vel_w 
         self.forwards = math_utils.quat_apply(self.robot.data.root_link_quat_w, self.robot.data.FORWARD_VEC_B)
 
-        #dot = torch.sum(self.forwards * self.commands, dim=-1, keepdim=True)
-        #cross = torch.cross(self.forwards, self.commands, dim=-1)[:,-1].reshape(-1,1)
         forward_speed = self.robot.data.root_com_lin_vel_b[:,0].reshape(-1,1)
-        #obs = torch.hstack((dot, cross, forward_speed))
 
-        #obs = torch.hstack((forward_speed))
         obs = forward_speed
-        # obs.shape:  torch.Size([2, 2])
-        # left_camera_image.shape:  (2, 480, 3)
 
         left_camera_image = self.scene["left_camera"].data.output["rgb"]
         right_camera_image = self.scene["right_camera"].data.output["rgb"]
@@ -308,33 +299,37 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
 
         # obs.shape:  torch.Size([2, 2])
         left_camera_input = left_camera_image.permute(0, 3, 1, 2).float() / 255.0
-        left_camera_input = F.interpolate(left_camera_input, size=(64, 64), mode='bilinear', align_corners=False)
-        #print("left_camera_input: ", left_camera_input)
+        weights = torch.tensor([0.2989, 0.5870, 0.1140], device=left_camera_input.device).view(1, 3, 1, 1)
+        left_camera_gray = (left_camera_input * weights).sum(dim=1, keepdim=True)
+        left_camera_gray = F.interpolate(left_camera_gray, size=(64, 64), mode='bilinear', align_corners=False)
 
         right_camera_input = right_camera_image.permute(0, 3, 1, 2).float()  / 255.0
-        right_camera_input = F.interpolate(right_camera_input, size=(64, 64), mode='bilinear', align_corners=False)
+        weights = torch.tensor([0.2989, 0.5870, 0.1140], device=right_camera_input.device).view(1, 3, 1, 1)
+        right_camera_gray = (right_camera_input * weights).sum(dim=1, keepdim=True)
+        right_camera_gray = F.interpolate(right_camera_gray, size=(64, 64), mode='bilinear', align_corners=False)
         # left_camera_input.shape:  torch.Size([2, 3, 480, 640])
 
         # 2. Expand scalar_obs to match image spatial dimensions [480, 640]
         B, S = obs.shape
-        H, W = left_camera_input.shape[2], left_camera_input.shape[3]
+        H, W = left_camera_gray.shape[2], left_camera_gray.shape[3]
 
         # Reshape [2, 2] -> [2, 2, 1, 1] then tile to [2, 2, 480, 640]
         scalar_map = obs.view(B, S, 1, 1).expand(-1, -1, H, W)
 
         # left_camera_input.shape:  torch.Size([2, 3, 480, 640])
         # scalar_map.shape:  torch.Size([2, 2, 480, 640])
-        combined_input = torch.cat([left_camera_input, scalar_map], dim=1)
-        combined_input = torch.cat([combined_input, right_camera_input], dim=1)
+        combined_input = torch.cat([left_camera_gray, scalar_map], dim=1)
+        combined_input = torch.cat([combined_input, right_camera_gray], dim=1)
 
         observations = {"policy": combined_input}
 
         return observations
 
     def _get_rewards(self) -> torch.Tensor:
-        needs_new_target = self._calculate_cloeset_waypoint()
+        distances = self._calculate_cloeset_waypoint()
 
-        self.draw.clear_points()
+        #self.draw.clear_points()
+        '''
         if self.active_target_pos is not None:
             z_offsets = torch.full((self.num_envs, 1), -0.2, device=self.device)
             targets_3d_tensor = torch.cat([self.active_target_pos, z_offsets], dim=-1)
@@ -342,8 +337,13 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
             point_colors = [[1.0, 0.0, 0.0, 1.0]] * self.num_envs
             point_sizes = [20.0] * self.num_envs
             self.draw.draw_points(targets_3d_list, point_colors, point_sizes)
+        '''
 
-        total_reward = needs_new_target.float().unsqueeze(1)
+        #total_reward = needs_new_target.float().unsqueeze(1)
+        distance_reward = -distances
+        distance_reward = distance_reward.float().unsqueeze(1)
+        distance_reward = torch.clamp(distance_reward, min=-10.0)
+        total_reward = distance_reward
 
         return total_reward
 
@@ -395,6 +395,32 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         zeros = torch.zeros((num_resets, 6), device=self.device)
         self.robot.write_root_velocity_to_sim(zeros, env_ids)
         
-        # IMPORTANT: Clear the active target so it recalculates immediately in _apply_action
-        #if self.active_target_pos is not None:
-        #    self.active_target_pos[env_ids] = spawn_pos[:, :2]
+        self._calculate_cloeset_waypoint()
+
+        target_pos = self.active_target_pos[env_ids]
+
+        # Extract relevant coordinates
+        target_x = target_pos[:, 0]
+        target_y = target_pos[:, 1]
+        spawn_x = spawn_pos[:, 0]
+        spawn_y = spawn_pos[:, 1]
+
+        # 1. Calculate the relative displacement
+        dx = target_x - spawn_x
+        dy = target_y - spawn_y
+
+        # 2. Compute Yaw (Angle around Z-axis)
+        # atan2 handles the quadrant logic automatically
+        yaw = torch.atan2(dy, dx) + torch.pi
+
+        # 3. Create Quaternions (w, x, y, z)
+        # For a robot rotating only on the ground (Z-axis):
+        # w = cos(yaw/2), x = 0, y = 0, z = sin(yaw/2)
+        num_resets = yaw.shape[0]
+        spawn_quat = torch.zeros((num_resets, 4), device='cuda:0')
+        spawn_quat[:, 0] = torch.cos(yaw / 2.0)  # w (scalar part)
+        spawn_quat[:, 3] = torch.sin(yaw / 2.0)  # z (vector part)
+
+        # 4. Final Pose [num_resets, 7]
+        spawn_pose = torch.cat([spawn_pos, spawn_quat], dim=-1)
+        self.robot.write_root_pose_to_sim(spawn_pose, env_ids)
