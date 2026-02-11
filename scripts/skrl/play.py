@@ -85,7 +85,10 @@ def on_press(key):
 
 
 def on_release(key):
+    global key_input
+
     print('{0} released'.format(key))
+    key_input = 'f'
     if key == keyboard.Key.esc:
         # Stop listener
         return False
@@ -126,6 +129,8 @@ algorithm = args_cli.algorithm.lower()
 
 
 def main():
+    global key_input
+
     """Play with skrl agent."""
     # configure the ML framework into the global skrl variable
     if args_cli.ml_framework.startswith("jax"):
@@ -162,10 +167,10 @@ def main():
         pass
 
     root_path = '/media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/isaac_lab_jetbot_orin/logs/skrl/jetbot_orin_direct'
-    folder_name = '2026-02-10_04-07-41_ppo_torch'
+    folder_name = '2026-02-11_02-19-28_ppo_torch'
     resume_path = os.path.join(root_path, folder_name)
     resume_path = os.path.join(resume_path, "checkpoints")
-    epoch = 6400
+    epoch = 20000
     file_name = "agent_{}.pt".format(epoch)
     #file_name = "best_agent.pt"
     resume_path = os.path.join(resume_path, file_name)
@@ -303,24 +308,26 @@ def main():
             left_gray_resized = left_gray_resized.astype(np.uint8) 
             #print("left_gray_resized.shape: ", left_gray_resized.shape)
             #print("left_camera_gray_0.shape: ", left_camera_gray_0.shape)
-            cv2.imshow('Stereo View Of Robot 1', left_gray_resized)
+            #cv2.imshow('Stereo View Of Robot 1', left_gray_resized)
             #cv2.imshow('Stereo View Of Robot 2', combined_image_1)
-            cv2.waitKey(1) # Required for the window to refresh
+            #cv2.waitKey(1) # Required for the window to refresh
             
-            if (key_input == 'w'):
+            '''
+            if key_input == 'w':
                 actions = torch.tensor([[24]], device='cuda:0')
-            elif (key_input == 'a'):
+            elif key_input == 'a':
                 actions = torch.tensor([[4]], device='cuda:0')
-            elif (key_input == 'd'):
+            elif key_input == 'd':
                 actions = torch.tensor([[20]], device='cuda:0')
-            elif (key_input == 's'):
+            elif key_input == 's':
                 actions = torch.tensor([[0]], device='cuda:0')
             else:
                 actions = torch.tensor([[12]], device='cuda:0')
+            '''
 
             #print("actions: ", actions)
             obs, _, _, _, _ = env.step(actions)
-        
+
         if args_cli.video:
             timestep += 1
             

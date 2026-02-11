@@ -4,14 +4,10 @@ seed: 42
 # Models are instantiated using skrl's model instantiator utility
 # https://skrl.readthedocs.io/en/latest/api/utils/model_instantiators.html
 models:
-  separate: False
+  separate: True
   policy:
     class: CategoricalMixin
     clip_actions: False
-    clip_log_std: True
-    min_log_std: -20.0
-    max_log_std: 2.0
-    initial_log_std: 0.0
     network:
       - name: net
         input: STATES  # skrl handles the [8, 480, 640] shape automatically if defined in env
@@ -26,11 +22,11 @@ models:
           # Reduced feature fusion from 512 to 256
           - linear: {out_features: 256}
         activations:
-          - elu
-          - elu
-          - elu
+          - relu
+          - relu
+          - relu
           - None
-          - elu
+          - relu
     output: ACTIONS
   value:
     class: DeterministicMixin
@@ -45,11 +41,11 @@ models:
           - flatten
           - linear: {out_features: 256}
         activations:
-          - elu
-          - elu
-          - elu
+          - relu
+          - relu
+          - relu
           - None
-          - elu
+          - relu
     output: ONE
 
 
@@ -65,14 +61,14 @@ memory:
 agent:
   class: PPO
   rollouts: 32
-  learning_epochs: 1
-  mini_batches: 1
+  learning_epochs: 5
+  mini_batches: 4
   discount_factor: 0.99
   lambda: 0.95
-  learning_rate: 5.0e-04
+  learning_rate: 1.0e-04
   learning_rate_scheduler: KLAdaptiveLR
   learning_rate_scheduler_kwargs:
-    kl_threshold: 0.008
+    kl_threshold: 0.001
   state_preprocessor: RunningStandardScaler
   state_preprocessor_kwargs: null
   value_preprocessor: RunningStandardScaler
@@ -83,8 +79,8 @@ agent:
   ratio_clip: 0.2
   value_clip: 0.2
   clip_predicted_values: True
-  entropy_loss_scale: 0.0
-  value_loss_scale: 2.0
+  entropy_loss_scale: 0.01
+  value_loss_scale: 0.5
   kl_threshold: 0.0
   rewards_shaper_scale: 0.1
   time_limit_bootstrap: False

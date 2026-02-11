@@ -2,7 +2,6 @@
 # All rights reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 from gymnasium import spaces
 import gymnasium as gym
 import numpy as np
@@ -17,13 +16,12 @@ from isaaclab.sim import SimulationCfg
 from isaaclab.sensors import CameraCfg, TiledCameraCfg
 from isaaclab.utils import configclass
 import isaaclab.sim as sim_utils
-#print("os.getcwd(): ", os.getcwd())
-# os.getcwd():  /media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/isaac_lab_jetbot_orin
+
 
 @configclass
 class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
     # env
-    decimation = 2
+    decimation = 8
     episode_length_s = 15.0
     
     # - spaces definition
@@ -67,7 +65,7 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
 
     left_tiled_camera: TiledCameraCfg = TiledCameraCfg(
         prim_path="/World/envs/env_.*/Robot/Body/tiled_camera_0",
-        offset=TiledCameraCfg.OffsetCfg(pos=(-0.07617, 0.02921, -0.03784), 
+        offset=TiledCameraCfg.OffsetCfg(pos=(-0.07617, -0.02921, -0.03784), 
                                         rot=(0.5792, 0.40558, 0.40558, 0.57923), 
                                         convention="opengl"),
         data_types=["rgb"],
