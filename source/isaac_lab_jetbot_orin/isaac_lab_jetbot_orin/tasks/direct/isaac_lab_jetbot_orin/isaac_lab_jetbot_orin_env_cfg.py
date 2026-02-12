@@ -22,7 +22,7 @@ import isaaclab.sim as sim_utils
 class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
     # env
     decimation = 8
-    episode_length_s = 15.0
+    episode_length_s = 30.0
     
     # - spaces definition
     #action_space = 2

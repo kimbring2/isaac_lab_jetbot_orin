@@ -99,17 +99,11 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
 
         all_spawn_points = self.spawn_pos_tensor.reshape(-1, 3).tolist()
 
-        '''
-        self.draw.draw_points(
-            all_spawn_points, 
-            [[0, 1, 0, 1]] * len(all_spawn_points), # Green
-            [5.0] * len(all_spawn_points)           # Size
-        )
-        '''
+        #self.draw.draw_points(all_spawn_points, [[0, 1, 0, 1]] * len(all_spawn_points), [5.0] * len(all_spawn_points))
 
         # Define a local 'forward' vector (0.1 meters long in the X direction)
         # We repeat it for every single spawn point in the scene
-        # 1. Calculate total number of points across all envs
+        # Calculate total number of points across all envs
         num_envs = self.num_envs
         num_points_per_env = self.spawn_quat_tensor.shape[0] # Should be 17
         total_points = num_envs * num_points_per_env        # e.g., 289
@@ -131,203 +125,75 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
 
         '''
         self.draw.draw_lines(
-            line_starts.tolist(), line_ends.tolist(), 
-            [[1.0, 0.0, 0.0, 1.0]] * total_points,  [2.0] * total_points
+            line_starts.tolist(), line_ends.tolist(), [[1.0, 0.0, 0.0, 1.0]] * total_points,  [2.0] * total_points
         )
         '''
 
         # 8. add road lane
-        curve_prim = UsdGeom.BasisCurves.Get(self.sim.stage, "/World/envs/env_0/Track/Road_Lane_1")
-        raw_points = list(curve_prim.GetPointsAttr().Get())
+        # Get the parent scope prim
+        parent_path = "/World/envs/env_0/Track/Road_Lane"
+        parent_prim = prim_utils.get_prim_at_path(parent_path)
 
-        # Filter to keep only unique consecutive points
-        unique_points = [k for k, g in itertools.groupby(raw_points)]
-        #print("unique_points: ", unique_points)
-        #for unique_point in unique_points:
-        #    print("unique_point: ", unique_point)
+        # Iterate through children and extract points
+        all_lane_segments_a = []
+        all_lane_segments_b = []
 
-        # add waypoint
-        all_env_points_list = []
+        for child in prim_utils.get_prim_children(parent_prim):
+            if child.GetTypeName() == "BasisCurves":
+                curve_geom = UsdGeom.BasisCurves.Get(self.sim.stage, child.GetPath())
+                local_pts = torch.tensor(curve_geom.GetPointsAttr().Get(), device=self.device)
+                
+                # Scale and offset to world coordinates for the template (env_0)
+                world_pts = (local_pts * 0.05) + self.scene.env_origins[0]
+                
+                # Create segments (Start A to End B)
+                #print("world_pts[:-1, :2]: ", world_pts[:-1, :2])
+                all_lane_segments_a.append(world_pts[:-1, :2])
+                all_lane_segments_b.append(world_pts[1:, :2])
 
-        # Scale factor of 1/10
-        scale = 0.05
-        for i, origin in enumerate(self.scene.env_origins):
-            # Scale local points by 0.1 AND shift to environment's world position
-            world_points = [
-                (p[0] * scale + origin[0],  p[1] * scale + origin[1], p[2] * scale + origin[2] -0.2
-                ) for p in unique_points
-            ]
+        # Combine into master tensors and broadcast to all environments
+        # Shape: [num_total_segments, 2] -> [num_envs, num_total_segments, 2]
+        self.master_seg_a = torch.cat(all_lane_segments_a, dim=0).unsqueeze(0).repeat(self.num_envs, 1, 1)
+        self.master_seg_b = torch.cat(all_lane_segments_b, dim=0).unsqueeze(0).repeat(self.num_envs, 1, 1)
 
-            starts = world_points[:-1]
-            ends = world_points[1:]
-            colors = [(0, 1, 0, 1)] * len(starts)  # Green
-            widths = [2.0] * len(starts)
-            
-            all_env_points_list.extend(world_points)
+        # Shift env_0 template to each environment's specific origin
+        # Since template was env_0, we subtract origin[0] and add all origins
+        origin_offsets = self.scene.env_origins - self.scene.env_origins[0]
+        self.master_seg_a += origin_offsets[:, None, :2]
+        self.master_seg_b += origin_offsets[:, None, :2]
 
-        self.lane_points_tensor = torch.stack([torch.stack(env_points) for env_points in all_env_points_list])
-        self.lane_points_tensor = self.lane_points_tensor.view(self.num_envs, -1, 3)
+        # Concatenate segments (assuming they are [N, 2] from your previous loop)
+        template_starts_2d = torch.cat(all_lane_segments_a, dim=0)
+        template_ends_2d = torch.cat(all_lane_segments_b, dim=0)
 
-        # In __init__
-        self.previous_target_pos = None
-        self.active_target_pos = None
-        self.target_reached_threshold = 0.15
-        self.current_waypoint_idx = 0
+        # Add a Z-axis column of zeros to make them [N, 3]
+        # This prevents the "size 2 must match size 3" error
+        template_starts = torch.cat([template_starts_2d, torch.zeros((template_starts_2d.shape[0], 1), device=self.device)], dim=-1)
+        template_ends = torch.cat([template_ends_2d, torch.zeros((template_ends_2d.shape[0], 1), device=self.device)], dim=-1)
 
-    def _calculate_cloeset_waypoint(self):
-        #self.draw.clear_points()
+        # Broadcast to all environments
+        # origin_offsets shape: [num_envs, 3]
+        origin_offsets = self.scene.env_origins - self.scene.env_origins[0]
 
-        all_points_flat = self.lane_points_tensor.view(-1, 3).cpu().numpy().tolist()
-        bg_colors = [[1.0, 1.0, 0.0, 0.3]] * len(all_points_flat) # Yellow (Faded)
-        #self.draw.draw_points(all_points_flat, bg_colors, [15.0] * len(all_points_flat))
+        # Final Shapes: [num_envs, Total_Segments, 3]
+        # Addition now works because both tensors have 3 as the last dimension
+        all_envs_starts = template_starts.unsqueeze(0) + origin_offsets.unsqueeze(1)
+        all_envs_ends = template_ends.unsqueeze(0) + origin_offsets.unsqueeze(1)
 
-        # 1. Get current robot state
-        robot_pos = self.robot.data.root_pos_w[:, :2]
-        # robot_pos.shape:  torch.Size([2, 2])
+        # Add a tiny Z-offset for visualization ONLY to prevent "flickering"
+        # This makes the lines float 2cm above the ground
+        all_envs_starts[:, :, 2] += -0.19
+        all_envs_ends[:, :, 2] += -0.19
 
-        quat = self.robot.data.root_quat_w[:, :]
-        # quat.shape:  torch.Size([2, 4])
-        
-        # Calculate current heading vector (Forward is +X in standard yaw)
-        current_yaw = torch.atan2(2.0 * (quat[:, 0] * quat[:, 3] + quat[:, 1] * quat[:, 2]), 
-                                  1.0 - 2.0 * (quat[:, 2]**2 + quat[:, 3]**2))
-        current_yaw += 3.14159  # Adjusting for your specific robot offset
-        # current_yaw.shape:  torch.Size([2])
+        # Flatten to lists for the Isaac Lab debug drawer
+        line_starts_list = all_envs_starts.reshape(-1, 3).tolist()
+        line_ends_list = all_envs_ends.reshape(-1, 3).tolist()
 
-        forward_vecs = torch.stack([torch.cos(current_yaw), torch.sin(current_yaw)], dim=-1)
-        # forward_vecs.shape:  torch.Size([2, 2])
+        # 6. Render the lines
+        colors = [[1.0, 0.5, 0.0, 1.0]] * len(line_starts_list) # Orange
+        widths = [2.0] * len(line_starts_list)
 
-        # 2. Filter for "Front" Waypoints
-        # Calculate vectors from robot to ALL waypoints
-        waypoint_vecs = self.lane_points_tensor[:, :, :2] - robot_pos[:, None, :] # [num_envs, num_waypoints, 2]
-        # waypoint_vecs.shape:  torch.Size([2, 29, 2])
-
-        dists_to_all = torch.norm(waypoint_vecs, dim=-1) # [num_envs, num_waypoints]
-        
-        # Use Dot Product to find which points are in front (> 0 means in front)
-        # (N, 2) dot (2,) -> (N,)
-        is_front = torch.sum(waypoint_vecs * forward_vecs[:, None, :], dim=-1) > 0 # [num_envs, num_waypoints]
-        #print("is_front.shape: ", is_front.shape)
-        # is_front.shape:  torch.Size([2, 29])
-
-        ## self.lane_points_tensor.shape:  torch.Size([2, 29, 3])
-
-        #front_points_tensor = self.lane_points_tensor[is_front] # Result shape: [Total_Front_Points, 3]
-        front_points_list = [
-            self.lane_points_tensor[i][is_front[i]] for i in range(self.num_envs)
-        ]
-
-        all_points_tensor = torch.cat(front_points_list, dim=0)
-        points_to_draw = all_points_tensor.tolist()
-        colors = [[1.0, 1.0, 0.0, 1.0]] * len(points_to_draw)  # Yellow for front points
-        sizes = [12.0] * len(points_to_draw)
-        #self.draw.draw_points(points_to_draw, colors, sizes)
-
-        if self.active_target_pos is not None:
-            distances = torch.norm(self.active_target_pos - robot_pos, dim=-1) # [num_envs]
-        else:
-            # First frame initialization: force update for all
-            distances = torch.zeros(self.num_envs, device=self.device)
-            self.active_target_pos = robot_pos.clone()
-
-        #front_points_tensor = front_points_tensor.view(is_front.shape[0], -1, 3)
-        #front_waypoint_vecs = front_points_tensor[:, :, :2] - robot_pos[:, None, :]
-
-        # 2. Identify which environments need a new target
-        # Logic: Target is None OR we reached the current one (dist < 0.1)
-        needs_new_target = (distances < 0.1)
-
-        if torch.any(needs_new_target):
-            # Get the indices (IDs) of environments that require a reset/update
-            env_ids = torch.where(needs_new_target)[0]
-
-            for env_id in env_ids:
-                # 1. Access the specific front points for this environment from the list
-                # Shape: [num_front_points, 3]
-                current_front_points = front_points_list[env_id]
-
-                # 2. Calculate distances from robot to these points (using X and Y)
-                # robot_pos[env_id] is [3] or [2]
-                vecs = current_front_points[:, :2] - robot_pos[env_id, :2]
-                dists = torch.norm(vecs, dim=-1)
-
-                # 3. Find the second closest waypoint
-                # k=2 finds the two smallest distances
-                if dists.shape[0] >= 2:
-                    values, indices = torch.topk(dists, k=2, dim=-1, largest=False)
-                    second_closest_idx = indices[1] # Index 1 is the second smallest
-                    
-                    # 4. Update the active target position for this specific environment
-                    self.active_target_pos[env_id] = current_front_points[second_closest_idx, :2]
-                elif dists.shape[0] > 0:
-                    # Fallback: if only one point exists, take the closest one
-                    self.active_target_pos[env_id] = current_front_points[0, :2]
-
-        # Draw the visual markers for all active targets
-        if self.active_target_pos is not None:
-            # 1. Prepare Z-coordinates and combine (X, Y) with Z -> [num_envs, 3]
-            # Using torch.ones and multiplication is often slightly faster for broadcasting
-            z_coords = torch.ones((self.num_envs, 1), device=self.device) * -0.2
-            targets_3d_tensor = torch.cat([self.active_target_pos, z_coords], dim=-1)
-            
-            # 2. Convert to list for the debug drawer
-            # .tolist() works directly on tensors, usually no need for .cpu().numpy()
-            # unless you are on an older Isaac Sim version.
-            targets_3d_list = targets_3d_tensor.tolist()
-            
-            # 3. Define styles (one for each point)
-            point_colors = [[1.0, 0.0, 0.0, 1.0]] * self.num_envs # Bright Red
-            point_sizes = [12.0] * self.num_envs # Large size to ensure visibility
-            
-            # 4. Render all target points at once
-            # IMPORTANT: Clear points if you are drawing moving targets in a loop
-            #self.draw.draw_points(targets_3d_list, point_colors, point_sizes)
-
-        return needs_new_target, distances
-
-    def _move_robot_to_cloeset_waypoint(self):
-        # --- 3. Calculate Steering for ALL Robots ---
-        # Both are [num_envs, 2], so target_vec is [num_envs, 2]
-        robot_pos = self.robot.data.root_pos_w[:, :2]
-        quat = self.robot.data.root_quat_w[:, :]
-        
-        # Calculate current heading vector (Forward is +X in standard yaw)
-        current_yaw = torch.atan2(2.0 * (quat[:, 0] * quat[:, 3] + quat[:, 1] * quat[:, 2]), 
-                                  1.0 - 2.0 * (quat[:, 2]**2 + quat[:, 3]**2))
-        current_yaw += 3.14159  # Adjusting for your specific robot offset
-
-        target_vec = self.active_target_pos - robot_pos
-
-        # Calculate target yaw for each robot
-        # target_vec[:, 1] is Y, target_vec[:, 0] is X
-        target_yaw = torch.atan2(target_vec[:, 1], target_vec[:, 0])
-
-        # yaw_error will be [num_envs]
-        yaw_error = target_yaw - current_yaw
-
-        # Normalize error to [-pi, pi] for all environments
-        yaw_error = torch.atan2(torch.sin(yaw_error), torch.cos(yaw_error))
-
-        # --- 4. Control Output (Batch Processed) ---
-        base_vel = 0.6
-        steer_gain = 4.0
-
-        # Calculate speed factor for each robot based on its own yaw error
-        speed_factor = torch.clamp(1.0 - torch.abs(yaw_error) / 1.5, min=0.3)
-
-        # Calculate wheel velocities for all robots [num_envs]
-        left_wheel = (base_vel * speed_factor) - (yaw_error * steer_gain)
-        right_wheel = (base_vel * speed_factor) + (yaw_error * steer_gain)
-
-        # --- 5. Apply Actions ---
-        # Stack the wheels to create a [num_envs, 2] tensor
-        # We use dim=-1 to join them as columns
-        actions = torch.stack([left_wheel, right_wheel], dim=-1) * 10.0
-
-        # Apply the vectorized actions to the simulation
-        #self.robot.set_joint_velocity_target(actions, joint_ids=self.dof_idx)
-
-        return actions, yaw_error
+        #self.draw.draw_lines(line_starts_list, line_ends_list, colors, widths)
 
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
         self.actions = actions.clone()
@@ -368,8 +234,6 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         robot_pos = self.robot.data.root_pos_w
         robot_z_position = robot_pos[:, 2]
         robot_fell_off = robot_z_position < -0.2
-        #robot_fell_off = torch.tensor([False, True, False,  True], device='cuda:0')
-
         fell_off_env_ids = robot_fell_off.nonzero(as_tuple=False).flatten()
 
         # Call if robot_fell_off is True _reset_idx(self, env_ids: Sequence[int] | None):
@@ -385,20 +249,6 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
 
         left_camera_image = self.scene["left_camera"].data.output["rgb"]
         right_camera_image = self.scene["right_camera"].data.output["rgb"]
-        def expand_scalar_to_image(scalar_obs, image_shape):
-            # scalar_obs shape: [B, S] (e.g., [2, 2])
-            # image_shape: (B, C, H, W) (e.g., [2, 3, 480, 480])
-            B, S = scalar_obs.shape
-            _, _, H, W = image_shape
-
-            # 1. Reshape scalar to [B, S, 1, 1]
-            scalar_expanded = scalar_obs.view(B, S, 1, 1)
-
-            # 2. Tile/Expand to [B, S, H, W]
-            # This creates a "channel" where every pixel is the same scalar value
-            scalar_map = scalar_expanded.expand(-1, -1, H, W)
-
-            return scalar_map
 
         # obs.shape:  torch.Size([2, 2])
         weights = torch.tensor([0.2989, 0.5870, 0.1140], device=left_camera_image.device).view(1, 3, 1, 1)
@@ -428,50 +278,80 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         return observations
 
     def _get_rewards(self) -> torch.Tensor:
-        #self.draw.clear_points()
-
-        needs_new_target, distances = self._calculate_cloeset_waypoint()
-        
-        distance_reward = -distances
-        distance_reward = distance_reward.float().unsqueeze(1)
-        #distance_reward = torch.sum(distance_reward, dim=-1, keepdim=True)
-        distance_reward = distance_reward / 10.0
-        #print("distance_reward: ", distance_reward)
-        total_reward = distance_reward
+        #self.draw.clear_lines()
 
         forward_reward = -self.robot.data.root_com_lin_vel_b[:,0].reshape(-1,1)
         #print("forward_reward: ", forward_reward)
+
         #total_reward = forward_reward
+        total_reward = torch.zeros((self.num_envs, 1), device=self.device)
+        # total_reward.shape:  torch.Size([2, 1])
 
-        reach_reward = needs_new_target.float().unsqueeze(1)
-        #if reach_reward.cpu().numpy() != 0.0:
-        #    print("reach_reward: ", reach_reward)
-        #else:
-        #    print("reach_reward: ", reach_reward)
+        ## --- Lane Detection Logic ---
+        # 1. Get current robot position [num_envs, 2]
+        robot_xy = self.robot.data.root_pos_w[:, :2]
 
-        total_reward += reach_reward
+        # 2. Define vectors for segments and robot relative to segment starts
+        # line_vecs: [num_envs, num_segs, 2]
+        # robot_vecs: [num_envs, num_segs, 2]
+        line_vecs = self.master_seg_b - self.master_seg_a
+        robot_vecs = robot_xy[:, None, :] - self.master_seg_a
 
-        if self.active_target_pos != None:
-            expected_actions, yaw_error = self._move_robot_to_cloeset_waypoint()
-            yaw_error = yaw_error.float().unsqueeze(1)
-            #print("yaw reward: ", -yaw_error)
-            #total_reward += -yaw_error
-        else:
-            zero_rewards = torch.zeros((self.num_envs, 1), device=self.device)
-            total_reward += zero_rewards
+        # 3. Calculate squared length of segments for normalization
+        seg_len_sq = torch.sum(line_vecs**2, dim=-1) + 1e-6
 
-        #actions, yaw_error = self._move_robot_to_cloeset_waypoint()
-        #print("actions: ", actions)
-        #print("self.actions: ", self.actions)
+        # 4. Find the projection factor 't' 
+        # t=0 at start point A, t=1 at end point B
+        t = torch.sum(robot_vecs * line_vecs, dim=-1) / seg_len_sq
 
-        #diff_sq = torch.square(expected_actions - self.actions)
-        #mse = torch.mean(diff_sq, dim=-1)
-        #total_reward = -mse / 100.0
+        # 5. Calculate Perpendicular (Lateral) Distance
+        # Cross product: (Ax * By) - (Ay * Bx)
+        cross_prod = (line_vecs[..., 0] * robot_vecs[..., 1]) - (line_vecs[..., 1] * robot_vecs[..., 0])
+        line_lengths = torch.sqrt(seg_len_sq)
+        perp_dists = torch.abs(cross_prod) / line_lengths
 
-        #total_reward = -self.robot.data.root_com_lin_vel_b[:,0].reshape(-1,1)
+        # 6. IDENTIFY IF ROBOT IS "ON" THE LINE
+        # Condition A: Robot projection is between the start and end of the segment (0 < t < 1)
+        # Condition B: Robot is physically close enough to the line (e.g., within 0.1m)
+        is_within_bounds = (t >= 0.0) & (t <= 1.0)
+        is_close_perpendicularly = perp_dists < 0.05  # Adjust this threshold to your robot's width
+
+        # Final Mask: [num_envs, num_segs] 
+        # This is True for every segment the robot is currently overlapping
+        robot_is_on_segment = is_within_bounds & is_close_perpendicularly
+
+        ## 7. VISUALIZATION (Per-Environment)
+        # Loop through each environment
+        for env_idx in range(self.num_envs):
+            # Get the mask for ONLY this specific environment [138]
+            env_mask = robot_is_on_segment[env_idx]
+            
+            # Check if this specific robot is on any segment
+            if torch.any(env_mask):
+                # Extract segments for this environment only
+                # Resulting shape: [num_hit_segments, 2]
+                on_starts = self.master_seg_a[env_idx][env_mask]
+                on_ends = self.master_seg_b[env_idx][env_mask]
+
+                if sum(sum(on_starts - on_ends)).any():
+                    # Prepare drawing coordinates
+                    # Call if robot_fell_off is True _reset_idx(self, env_ids: Sequence[int] | None):
+                    total_reward[[env_idx], :] -= 1.0
+                    self._reset_idx(torch.tensor([env_idx], device=self.device))
+
+                    z_height = torch.full((on_starts.shape[0], 1), -0.18, device=self.device)
+                    draw_starts = torch.cat([on_starts, z_height], dim=-1).tolist()
+                    draw_ends = torch.cat([on_ends, z_height], dim=-1).tolist()
+                    
+                    # Pick a color based on the environment index
+                    # Env 0 = Red, Env 1 = Green, Others = Yellow
+                    color = [1.0, 0.0, 0.0, 1.0] # Red
+                    colors = [color] * len(draw_starts)
+                    
+                    # Draw lines for this specific environment
+                    #self.draw.draw_lines(draw_starts, draw_ends, colors, [10.0] * len(draw_starts))
+
         #print("total_reward: ", total_reward)
-        
-        #total_reward = torch.tensor([[0.0]], device=self.device)
 
         return total_reward
 
@@ -480,21 +360,18 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         return False, time_out
 
     def _reset_idx(self, env_ids: Sequence[int] | None):
+        self.reset_buf[env_ids] = False
+
         if env_ids is None:
             env_ids = self.robot._ALL_INDICES
         
         super()._reset_idx(env_ids)
 
-        self.previous_target_pos = None
-        self.active_target_pos = None
-        self.target_reached_threshold = 0.15
-        self.current_waypoint_idx = 0
-
         num_resets = len(env_ids)
         
         # 2. Reset the actions buffer to zero
         # This ensures no old commands persist in the next step
-        self.actions[env_ids] = 0.0
+        #self.actions[env_ids] = 0.0
 
         # 1. Determine how many spawn points are available per environment (usually 17)
         num_points_per_env = self.spawn_pos_tensor.shape[1]
@@ -502,22 +379,18 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         # 2. Pick a random spawn point index for each resetting environment
         # Shape: [num_resets]
         point_indices = torch.randint(0, num_points_per_env, (len(env_ids),), device=self.device)
-        #print("point_indices: ", point_indices)
-        #point_indices = torch.tensor([4], device=self.device)
 
         # 3. Select the specific positions and rotations
         # Use advanced indexing: self.spawn_pos_tensor[env_ids, point_indices]
         # Shape: [num_resets, 3] and [num_resets, 4]
         selected_pos = self.spawn_pos_tensor[env_ids, point_indices]
-        #print("selected_pos: ", selected_pos)
-
         selected_quat = self.spawn_quat_tensor[point_indices] # Rotation is usually local/same for all envs
 
         # 4. Prepare the new root state
         # Root state format: [pos(3), quat(4), lin_vel(3), ang_vel(3)]
         # We clone the default state to ensure velocities are zeroed out
         root_state = self.robot.data.default_root_state[env_ids].clone()
-        
+
         # Update Position and Orientation
         root_state[:, :3] = selected_pos
         root_state[:, 2] += 0.15
@@ -525,29 +398,3 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
 
         # 5. Write the state back to the physics simulation
         self.robot.write_root_state_to_sim(root_state, env_ids)
-        
-        self._calculate_cloeset_waypoint()
-
-        target_pos = self.active_target_pos[env_ids]
-
-        # Extract relevant coordinates
-        target_x = target_pos[:, 0]
-        target_y = target_pos[:, 1]
-        spawn_x = selected_pos[:, 0]
-        spawn_y = selected_pos[:, 1]
-
-        # 1. Calculate the relative displacement
-        dx = target_x - spawn_x
-        dy = target_y - spawn_y
-
-        # 2. Compute Yaw (Angle around Z-axis)
-        # atan2 handles the quadrant logic automatically
-        yaw = torch.atan2(dy, dx) + torch.pi
-
-        # 3. Create Quaternions (w, x, y, z)
-        # For a robot rotating only on the ground (Z-axis):
-        # w = cos(yaw/2), x = 0, y = 0, z = sin(yaw/2)
-        num_resets = yaw.shape[0]
-        spawn_quat = torch.zeros((num_resets, 4), device=self.device)
-        spawn_quat[:, 0] = torch.cos(yaw / 2.0)  # w (scalar part)
-        spawn_quat[:, 3] = torch.sin(yaw / 2.0)  # z (vector part)

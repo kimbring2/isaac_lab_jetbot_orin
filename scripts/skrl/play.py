@@ -77,17 +77,18 @@ key_input = 'f'
 def on_press(key):
     global key_input
     try:
+        # For alphanumeric keys (a-z, 0-9)
         key_input = key.char
-        print('alphanumeric key {0} pressed'.format(key.char))
     except AttributeError:
-        key_input = key.char
-        print('special key {0} pressed'.format(key))
+        # For special keys (Space, Arrows, etc.)
+        # key.char doesn't exist here, so we use str(key) or a specific name
+        key_input = str(key) 
+        # Example: if you press Space, key_input will be 'Key.space'
 
 
 def on_release(key):
     global key_input
-
-    print('{0} released'.format(key))
+    #print('{0} released'.format(key))
     key_input = 'f'
     if key == keyboard.Key.esc:
         # Stop listener
@@ -161,19 +162,21 @@ def main():
     elif args_cli.checkpoint:
         resume_path = os.path.abspath(args_cli.checkpoint)
     else:
-        #resume_path = get_checkpoint_path(
-        #    log_root_path, run_dir=f".*_{algorithm}_{args_cli.ml_framework}", other_dirs=["checkpoints"]
-        #)
-        pass
+        resume_path = get_checkpoint_path(
+            log_root_path, run_dir=f".*_{algorithm}_{args_cli.ml_framework}", other_dirs=["checkpoints"]
+        )
+        #pass
 
+    '''
     root_path = '/media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/isaac_lab_jetbot_orin/logs/skrl/jetbot_orin_direct'
-    folder_name = '2026-02-11_02-19-28_ppo_torch'
+    folder_name = '2026-02-11_11-11-02_ppo_torch'
     resume_path = os.path.join(root_path, folder_name)
     resume_path = os.path.join(resume_path, "checkpoints")
-    epoch = 20000
+    epoch = 40000
     file_name = "agent_{}.pt".format(epoch)
     #file_name = "best_agent.pt"
     resume_path = os.path.join(resume_path, file_name)
+    '''
 
     #resume_path = '/media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/isaac_lab_jetbot_orin/logs/skrl/cartpole_direct/2026-02-08_22-08-17_ppo_torch/checkpoints/checkpoints/best_agent.pt'
     #print("resume_path: ", resume_path)
@@ -312,7 +315,7 @@ def main():
             #cv2.imshow('Stereo View Of Robot 2', combined_image_1)
             #cv2.waitKey(1) # Required for the window to refresh
             
-            '''
+            
             if key_input == 'w':
                 actions = torch.tensor([[24]], device='cuda:0')
             elif key_input == 'a':
@@ -323,7 +326,7 @@ def main():
                 actions = torch.tensor([[0]], device='cuda:0')
             else:
                 actions = torch.tensor([[12]], device='cuda:0')
-            '''
+            
 
             #print("actions: ", actions)
             obs, _, _, _, _ = env.step(actions)
