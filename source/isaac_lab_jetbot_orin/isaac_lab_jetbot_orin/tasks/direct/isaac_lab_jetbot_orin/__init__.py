@@ -13,7 +13,7 @@ from . import agents
 
 
 gym.register(
-    id="Template-Isaac-Lab-Jetbot-Orin-Direct-v0",
+    id="Isaac-Lab-Jetbot-Orin-Direct-v0",
     entry_point=f"{__name__}.isaac_lab_jetbot_orin_env:IsaacLabJetbotOrinEnv",
     disable_env_checker=True,
     kwargs={

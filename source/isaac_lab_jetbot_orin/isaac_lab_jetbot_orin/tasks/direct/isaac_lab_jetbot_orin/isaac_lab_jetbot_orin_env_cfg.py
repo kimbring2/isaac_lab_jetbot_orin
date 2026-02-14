@@ -22,16 +22,16 @@ import isaaclab.sim as sim_utils
 class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
     # env
     decimation = 8
-    episode_length_s = 30.0
+    episode_length_s = 5.0
     
     # - spaces definition
-    #action_space = 2
-    action_space = gym.spaces.Discrete(25)
+    action_space = 2
+    #action_space = gym.spaces.Discrete(25)
     
     #observation_space = 3
     observation_space = spaces.Box(
-        low=-np.inf, 
-        high=np.inf, 
+        low=-0.0, 
+        high=1.0, 
         shape=(3, 64, 64), 
         dtype=np.float32
     )
@@ -43,8 +43,12 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
     
     # Track Configuration
     # We use AssetBaseCfg for a static mesh that doesn't need joint control
+    usd_path = os.path.join(os.getcwd(), "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/simple_straight_track.usd")
 
-    usd_path = os.path.join(os.getcwd(), "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/starter_kit_track.usd")
+    #usd_path = os.path.join(os.getcwd(), "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/simple_curved_track.usd")
+
+    #usd_path = os.path.join(os.getcwd(), "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/starter_kit_track.usd")
+
     track_cfg = RigidObjectCfg(
         prim_path="/World/envs/env_.*/Track",
         spawn=sim_utils.UsdFileCfg(
@@ -59,9 +63,6 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
         ),
         init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, -0.2)),
     )
-
-    #Offset Translation: (-0.07616729313910534, 0.030207338855022945, -0.037841003795480666)
-    #Offset Rotation (Quat): (0.5792279653395693, 0.4055797876726387, 0.4055797876726388, 0.5792279653395691)
 
     left_tiled_camera: TiledCameraCfg = TiledCameraCfg(
         prim_path="/World/envs/env_.*/Robot/Body/tiled_camera_0",

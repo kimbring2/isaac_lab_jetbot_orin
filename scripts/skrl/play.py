@@ -69,8 +69,10 @@ import numpy as np
 
 import skrl
 from packaging import version
-from pynput import keyboard
 
+# Debug purpose - For keyboard manual control
+'''
+from pynput import keyboard
 
 key_input = 'f'
 
@@ -94,10 +96,9 @@ def on_release(key):
         # Stop listener
         return False
 
-
 listener = keyboard.Listener(on_press=on_press, on_release=on_release)
 listener.start()
-
+'''
 
 # check for minimum supported skrl version
 SKRL_VERSION = "1.4.2"
@@ -167,19 +168,17 @@ def main():
         )
         #pass
 
+    # Debug purpose - For selecting checkpoint manually
     '''
     root_path = '/media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/isaac_lab_jetbot_orin/logs/skrl/jetbot_orin_direct'
-    folder_name = '2026-02-11_11-11-02_ppo_torch'
+    folder_name = '2026-02-12_16-57-49_ppo_torch'
     resume_path = os.path.join(root_path, folder_name)
     resume_path = os.path.join(resume_path, "checkpoints")
-    epoch = 40000
+    epoch = 30000
     file_name = "agent_{}.pt".format(epoch)
-    #file_name = "best_agent.pt"
     resume_path = os.path.join(resume_path, file_name)
     '''
 
-    #resume_path = '/media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/isaac_lab_jetbot_orin/logs/skrl/cartpole_direct/2026-02-08_22-08-17_ppo_torch/checkpoints/checkpoints/best_agent.pt'
-    #print("resume_path: ", resume_path)
     log_dir = os.path.dirname(os.path.dirname(resume_path))
 
     # create isaac environment
@@ -196,7 +195,6 @@ def main():
         dt = env.unwrapped.step_dt
 
     # wrap for video recording
-    '''
     if args_cli.video:
         video_kwargs = {
             "video_folder": os.path.join(log_dir, "videos", "play"),
@@ -207,7 +205,6 @@ def main():
         print("[INFO] Recording videos during training.")
         print_dict(video_kwargs, nesting=4)
         env = gym.wrappers.RecordVideo(env, **video_kwargs)
-    '''
 
     # wrap around environment for skrl
     env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework)  # same as: `wrap_env(env, wrapper="auto")`
@@ -220,7 +217,7 @@ def main():
     runner = Runner(env, experiment_cfg)
 
     #print(f"[INFO] Loading model checkpoint from: {resume_path}")
-    #runner.agent.load(resume_path)
+    runner.agent.load(resume_path)
     
     # set agent to evaluation mode
     runner.agent.set_running_mode("eval")
@@ -236,6 +233,7 @@ def main():
         # run everything in inference mode
         with torch.inference_mode():
             # agent stepping
+            #print("runner.agent: ", runner.agent)
             outputs = runner.agent.act(obs, timestep=0, timesteps=0)
             
             # - multi-agent (deterministic) actions
@@ -245,44 +243,20 @@ def main():
             else:
                 actions = outputs[-1].get("mean_actions", outputs[0])
             
+
             # env stepping
             # print information from the sensors
-            '''
-            left_camera_image_0 = env.scene["left_camera"].data.output["rgb"]
-            left_camera_image_0 = left_camera_image_0[0]
-            left_camera_image_0 = left_camera_image_0.cpu().numpy()
-            left_camera_image_0 = cv2.cvtColor(left_camera_image_0, cv2.COLOR_RGB2BGR)
-            right_camera_image_0 = env.scene["right_camera"].data.output["rgb"]
-            right_camera_image_0 = right_camera_image_0[0]
-            right_camera_image_0 = right_camera_image_0.cpu().numpy()
-            right_camera_image_0 = cv2.cvtColor(right_camera_image_0, cv2.COLOR_RGB2BGR)
-            combined_image_0 = cv2.hconcat([left_camera_image_0, right_camera_image_0])
 
-            left_camera_image_1 = env.scene["left_camera"].data.output["rgb"]
-            left_camera_image_1 = left_camera_image_1[1]
-            left_camera_image_1 = left_camera_image_1.cpu().numpy()
-            left_camera_image_1 = cv2.cvtColor(left_camera_image_1, cv2.COLOR_RGB2BGR)
-            right_camera_image_1 = env.scene["right_camera"].data.output["rgb"]
-            right_camera_image_1 = right_camera_image_1[1]
-            right_camera_image_1 = right_camera_image_1.cpu().numpy()
-            right_camera_image_1 = cv2.cvtColor(right_camera_image_1, cv2.COLOR_RGB2BGR)
-            combined_image_1 = cv2.hconcat([left_camera_image_1, right_camera_image_1])
+            # Debug purpose - For rendering camera sensor image
             '''
-
             left_camera_image = env.scene["left_camera"].data.output["rgb"]
-            #print("left_camera_image.shape: ", left_camera_image.shape)
             left_camera_image_0 = left_camera_image.cpu().numpy()
-            # Convert RGB directly to GRAY
 
+            # Convert RGB directly to GRAY
             #print("left_camera_image_0.shape: ", left_camera_image_0.shape)
             #left_camera_gray_0 = cv2.cvtColor(left_camera_image_0, cv2.COLOR_RGB2GRAY)
-
             right_camera_image = env.scene["right_camera"].data.output["rgb"][0]
 
-            #print("left_camera_image.shape: ", left_camera_image.shape)
-            #print("right_camera_image.shape: ", right_camera_image.shape)
-
-            #device = left_camera_image.device
             weights = torch.tensor([0.2989, 0.5870, 0.1140], device='cuda:0').view(1, 3, 1, 1)
 
             # 2. Pre-process Left Camera
@@ -314,8 +288,10 @@ def main():
             #cv2.imshow('Stereo View Of Robot 1', left_gray_resized)
             #cv2.imshow('Stereo View Of Robot 2', combined_image_1)
             #cv2.waitKey(1) # Required for the window to refresh
-            
-            
+            '''
+
+            # Debug purpose - For keyboard manual control
+            '''
             if key_input == 'w':
                 actions = torch.tensor([[24]], device='cuda:0')
             elif key_input == 'a':
@@ -326,7 +302,7 @@ def main():
                 actions = torch.tensor([[0]], device='cuda:0')
             else:
                 actions = torch.tensor([[12]], device='cuda:0')
-            
+            '''
 
             #print("actions: ", actions)
             obs, _, _, _, _ = env.step(actions)

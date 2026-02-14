@@ -33,7 +33,6 @@ import isaacsim.core.utils.prims as prim_utils
 from isaacsim.core.utils.xforms import get_world_pose
 
 #import isaacsim.util.debug_draw._debug_draw as _debug_draw
-from isaaclab.utils.math import euler_xyz_from_quat
 
 
 class IsaacLabJetbotOrinEnv(DirectRLEnv):
@@ -83,6 +82,10 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         # Convert to tensors and make relative to env_0
         # [17, 3] and [17, 4]
         local_pos = torch.tensor([p[0] for p in poses], device=self.device) - self.scene.env_origins[0]
+
+        for pose in poses:
+            print("pose: ", pose)
+
         self.spawn_quat_tensor = torch.tensor([p[1] for p in poses], device=self.device)
         angle_rad = torch.tensor([np.pi / 2], device=self.device)
         zeros = torch.zeros_like(angle_rad)
@@ -195,6 +198,9 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
 
         #self.draw.draw_lines(line_starts_list, line_ends_list, colors, widths)
 
+        self.milestones_reached = torch.zeros((self.num_envs, 4), device=self.device, dtype=torch.bool)
+        self.total_step = 0
+
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
         self.actions = actions.clone()
 
@@ -208,31 +214,15 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         
         self.actions = actions
         '''
-        ACTION_LIST = []
-        for left_wheel in [-5.0, -2.5, 0.0, 2.5, 5.0]:
-            for right_wheel in [-5.0, -2.5, 0.0, 2.5, 5.0]:
-                ACTION_LIST.append([left_wheel, right_wheel])
 
-        # Convert to a tensor and move to the appropriate device
-        mapping = torch.tensor(ACTION_LIST, device=self.device, dtype=torch.float32)
-
-        # 2. Extract action indices for all environments
-        # self.actions shape is [num_envs, 1]
-        # We squeeze to [num_envs] and ensure long type for indexing
-        action_indices = self.actions.squeeze(-1).long()
-
-        # 3. Use the indices to pick the velocities for EVERY robot at once
-        # Resulting shape: [num_envs, 2]
-        applied_actions = mapping[action_indices]
-
-        #self.actions = torch.tensor([0.0, 0.0], device=self.device)
-        #self.actions = torch.clamp(self.actions, min=-10.0, max=10.0)
-        #print("self.actions: ", self.actions)
-        self.robot.set_joint_velocity_target(applied_actions, joint_ids=self.dof_idx)
+        self.robot.set_joint_velocity_target(self.actions, joint_ids=self.dof_idx)
 
     def _get_observations(self) -> dict:
+        #print("self.total_step: ", self.total_step)
+
         robot_pos = self.robot.data.root_pos_w
         robot_z_position = robot_pos[:, 2]
+
         robot_fell_off = robot_z_position < -0.2
         fell_off_env_ids = robot_fell_off.nonzero(as_tuple=False).flatten()
 
@@ -244,8 +234,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         self.forwards = math_utils.quat_apply(self.robot.data.root_link_quat_w, self.robot.data.FORWARD_VEC_B)
 
         forward_speed = self.robot.data.root_com_lin_vel_b[:,0].reshape(-1,1)
-
-        obs = forward_speed
+        obs = -forward_speed
 
         left_camera_image = self.scene["left_camera"].data.output["rgb"]
         right_camera_image = self.scene["right_camera"].data.output["rgb"]
@@ -275,17 +264,64 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
 
         observations = {"policy": combined_input}
 
+        self.total_step += 1
+
         return observations
 
     def _get_rewards(self) -> torch.Tensor:
         #self.draw.clear_lines()
 
-        forward_reward = -self.robot.data.root_com_lin_vel_b[:,0].reshape(-1,1)
-        #print("forward_reward: ", forward_reward)
+        robot_pos_world = self.robot.data.root_pos_w
+        robot_pos_local = robot_pos_world - self.scene.env_origins
+        robot_x_position = robot_pos_local[:, 0]
 
-        #total_reward = forward_reward
+        #print("robot_x_position.shape: ", robot_x_position.shape)
+        reach_goal = robot_x_position >= 0.85
+        reach_goal_env_ids = reach_goal.nonzero(as_tuple=False).flatten()
+
         total_reward = torch.zeros((self.num_envs, 1), device=self.device)
-        # total_reward.shape:  torch.Size([2, 1])
+
+        # Define the 4 levels (milestones)
+        levels = torch.tensor([-0.35, 0.05, 0.45, 0.85], device=self.device)
+        level_rewards = torch.tensor([0.25, 0.50, 0.75, 1.0], device=self.device)
+
+        # Check each level
+        for i in range(len(levels)):
+            # Find envs that are past the level AND haven't received the reward yet
+            passed_level = robot_x_position >= levels[i]
+            new_milestone = passed_level & ~self.milestones_reached[:, i]
+            
+            # Give the reward only to those environments
+            #total_reward[new_milestone, 0] += level_rewards[i]
+            
+            # Mark as reached so they don't get it again next frame
+            self.milestones_reached[new_milestone, i] = True
+        
+        #print("self.milestones_reached: ", self.milestones_reached)
+
+        # Call if robot_fell_off is True _reset_idx(self, env_ids: Sequence[int] | None):
+        if len(reach_goal_env_ids) > 0:
+            #print("reach_goal_env_ids: ", reach_goal_env_ids)
+            #total_reward[reach_goal_env_ids, 0] += 1.0
+            self._reset_idx(reach_goal_env_ids)
+
+        forward_reward = -self.robot.data.root_com_lin_vel_b[:,0].reshape(-1,1)
+        #print("forward_reward * 10.0: ", forward_reward * 10.0)
+        total_reward += forward_reward / 10.0
+
+        # Inside _get_rewards
+        robot_pos = self.robot.data.root_pos_w[:, :2] # [num_envs, 2]
+
+        # Create the Proximity Mask [num_envs, num_segs]
+        # Only consider segments within 2.0 meters of each robot
+        dist_to_starts = torch.norm(self.master_seg_a - robot_pos[:, None, :], dim=-1)
+        proximity_mask = dist_to_starts < 2.0
+
+        # Mask the Segment Tensors
+        # We use the mask to keep segments near the robot and replace far ones with 0
+        # We unsqueeze(-1) to broadcast the [2, 500] mask to the [2, 500, 2] coordinates
+        masked_seg_a = torch.where(proximity_mask.unsqueeze(-1), self.master_seg_a, torch.zeros_like(self.master_seg_a))
+        masked_seg_b = torch.where(proximity_mask.unsqueeze(-1), self.master_seg_b, torch.zeros_like(self.master_seg_b))
 
         ## --- Lane Detection Logic ---
         # 1. Get current robot position [num_envs, 2]
@@ -294,8 +330,8 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         # 2. Define vectors for segments and robot relative to segment starts
         # line_vecs: [num_envs, num_segs, 2]
         # robot_vecs: [num_envs, num_segs, 2]
-        line_vecs = self.master_seg_b - self.master_seg_a
-        robot_vecs = robot_xy[:, None, :] - self.master_seg_a
+        line_vecs = masked_seg_b - masked_seg_a
+        robot_vecs = robot_xy[:, None, :] - masked_seg_a
 
         # 3. Calculate squared length of segments for normalization
         seg_len_sq = torch.sum(line_vecs**2, dim=-1) + 1e-6
@@ -314,7 +350,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         # Condition A: Robot projection is between the start and end of the segment (0 < t < 1)
         # Condition B: Robot is physically close enough to the line (e.g., within 0.1m)
         is_within_bounds = (t >= 0.0) & (t <= 1.0)
-        is_close_perpendicularly = perp_dists < 0.05  # Adjust this threshold to your robot's width
+        is_close_perpendicularly = perp_dists < 0.025  # Adjust this threshold to your robot's width
 
         # Final Mask: [num_envs, num_segs] 
         # This is True for every segment the robot is currently overlapping
@@ -330,8 +366,8 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
             if torch.any(env_mask):
                 # Extract segments for this environment only
                 # Resulting shape: [num_hit_segments, 2]
-                on_starts = self.master_seg_a[env_idx][env_mask]
-                on_ends = self.master_seg_b[env_idx][env_mask]
+                on_starts = masked_seg_a[env_idx][env_mask]
+                on_ends = masked_seg_b[env_idx][env_mask]
 
                 if sum(sum(on_starts - on_ends)).any():
                     # Prepare drawing coordinates
@@ -352,7 +388,6 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
                     #self.draw.draw_lines(draw_starts, draw_ends, colors, [10.0] * len(draw_starts))
 
         #print("total_reward: ", total_reward)
-
         return total_reward
 
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
@@ -361,6 +396,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
 
     def _reset_idx(self, env_ids: Sequence[int] | None):
         self.reset_buf[env_ids] = False
+        self.milestones_reached[env_ids] = 0
 
         if env_ids is None:
             env_ids = self.robot._ALL_INDICES
@@ -371,7 +407,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         
         # 2. Reset the actions buffer to zero
         # This ensures no old commands persist in the next step
-        #self.actions[env_ids] = 0.0
+        self.actions[:] = 12
 
         # 1. Determine how many spawn points are available per environment (usually 17)
         num_points_per_env = self.spawn_pos_tensor.shape[1]
