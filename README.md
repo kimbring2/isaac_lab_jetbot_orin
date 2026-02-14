@@ -1,6 +1,8 @@
 # Isaac Lab Duckietown Projects
 
 ## Overview
+<img src="images/isaaclab_duckietown_demo.gif" width="720">
+
 A project to train a vehicle-type robot to drive well in a duckietown environment using deep reinforcement learning.
 
 **Key Features:**

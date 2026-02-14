@@ -22,7 +22,7 @@ import isaaclab.sim as sim_utils
 class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
     # env
     decimation = 8
-    episode_length_s = 5.0
+    episode_length_s = 30.0
     
     # - spaces definition
     action_space = 2
@@ -43,9 +43,9 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
     
     # Track Configuration
     # We use AssetBaseCfg for a static mesh that doesn't need joint control
-    usd_path = os.path.join(os.getcwd(), "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/simple_straight_track.usd")
+    #usd_path = os.path.join(os.getcwd(), "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/simple_straight_track.usd")
 
-    #usd_path = os.path.join(os.getcwd(), "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/simple_curved_track.usd")
+    usd_path = os.path.join(os.getcwd(), "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/simple_curved_track.usd")
 
     #usd_path = os.path.join(os.getcwd(), "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/starter_kit_track.usd")
 

@@ -83,8 +83,8 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         # [17, 3] and [17, 4]
         local_pos = torch.tensor([p[0] for p in poses], device=self.device) - self.scene.env_origins[0]
 
-        for pose in poses:
-            print("pose: ", pose)
+        #for pose in poses:
+        #    print("pose: ", pose)
 
         self.spawn_quat_tensor = torch.tensor([p[1] for p in poses], device=self.device)
         angle_rad = torch.tensor([np.pi / 2], device=self.device)
