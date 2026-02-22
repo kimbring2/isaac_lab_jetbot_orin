@@ -71,7 +71,7 @@ import skrl
 from packaging import version
 
 # Debug purpose - For keyboard manual control
-'''
+
 from pynput import keyboard
 
 key_input = 'f'
@@ -98,7 +98,7 @@ def on_release(key):
 
 listener = keyboard.Listener(on_press=on_press, on_release=on_release)
 listener.start()
-'''
+
 
 # check for minimum supported skrl version
 SKRL_VERSION = "1.4.2"
@@ -243,7 +243,6 @@ def main():
             else:
                 actions = outputs[-1].get("mean_actions", outputs[0])
             
-
             # env stepping
             # print information from the sensors
 
@@ -291,17 +290,18 @@ def main():
             '''
 
             # Debug purpose - For keyboard manual control
+            
             '''
             if key_input == 'w':
-                actions = torch.tensor([[24]], device='cuda:0')
+                actions = torch.tensor([10.0, 10.0], device='cuda:0')
             elif key_input == 'a':
-                actions = torch.tensor([[4]], device='cuda:0')
+                actions = torch.tensor([-10.0, 10.0], device='cuda:0')
             elif key_input == 'd':
-                actions = torch.tensor([[20]], device='cuda:0')
+                actions = torch.tensor([10.0, -10.0], device='cuda:0')
             elif key_input == 's':
-                actions = torch.tensor([[0]], device='cuda:0')
+                actions = torch.tensor([-10.0, -10.0], device='cuda:0')
             else:
-                actions = torch.tensor([[12]], device='cuda:0')
+                actions = torch.tensor([0.0, 0.0], device='cuda:0')
             '''
 
             #print("actions: ", actions)

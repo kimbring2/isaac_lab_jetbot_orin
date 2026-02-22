@@ -22,8 +22,10 @@ from isaaclab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
 from .isaac_lab_jetbot_orin_env_cfg import IsaacLabJetbotOrinEnvCfg
 
 from isaaclab.markers import VisualizationMarkers, VisualizationMarkersCfg
+
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
 import isaaclab.utils.math as math_utils
+#from isaaclab.utils import set_seed
 
 from isaaclab.sensors import Camera, CameraCfg, TiledCamera
 from isaaclab.assets import AssetBase, AssetBaseCfg
@@ -31,6 +33,7 @@ from isaaclab.assets import AssetBase, AssetBaseCfg
 from isaacsim.core.utils.extensions import enable_extension
 import isaacsim.core.utils.prims as prim_utils
 from isaacsim.core.utils.xforms import get_world_pose
+
 
 #import isaacsim.util.debug_draw._debug_draw as _debug_draw
 
@@ -41,6 +44,8 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
     def __init__(self, cfg: IsaacLabJetbotOrinEnvCfg, render_mode: str | None = None, **kwargs):
         super().__init__(cfg, render_mode, **kwargs)
         self.dof_idx, _ = self.robot.find_joints(self.cfg.dof_names)
+
+        #self.seed(42)
 
     def _setup_scene(self):
         # For draw debugging
@@ -68,8 +73,37 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         self.scene.sensors["right_camera"] = self.right_camera
 
         # 6. add lights
-        light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
-        light_cfg.func("/World/Light", light_cfg)
+        # Example per‑env light (if you want per-env control)
+        '''
+        light_cfg_1 = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
+        light_cfg_1.func("/World/Light1", light_cfg_1, translation=(0.0, 0.0, 1.0))
+        
+        light_cfg_2 = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
+        light_cfg_2.func("/World/Light2", light_cfg_2, translation=(0.0, -1.0, 1.0))
+        
+        light_cfg_3 = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
+        light_cfg_3.func("/World/Light3", light_cfg_3, translation=(-1.5, 0.0, 1.0))
+        
+        light_cfg_4 = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
+        light_cfg_4.func("/World/Light4", light_cfg_4, translation=(-1.5, -1.0, 1.0))
+        '''
+
+        # Example per‑env light (if you want per-env control)
+        light_cfg_1 = sim_utils.SphereLightCfg(intensity=2000.0, radius=1.0, color=(0.75, 0.75, 0.75), )
+        light_path = f"/World/envs/env_0/Light1"
+        light_cfg_1.func(light_path, light_cfg_1, translation=(0.0, 0.0, 1.0))
+
+        light_cfg_2 = sim_utils.SphereLightCfg(intensity=2000.0, radius=1.0, color=(0.75, 0.75, 0.75),)
+        light_path = f"/World/envs/env_0/Light2"
+        light_cfg_2.func(light_path, light_cfg_2, translation=(0.0, -1.0, 1.0))
+
+        light_cfg_3 = sim_utils.SphereLightCfg(intensity=2000.0, radius=1.0, color=(0.75, 0.75, 0.75),)
+        light_path = f"/World/envs/env_0/Light3"
+        light_cfg_3.func(light_path, light_cfg_3, translation=(-1.5, 0.0, 1.0))
+
+        light_cfg_4 = sim_utils.SphereLightCfg(intensity=2000.0, radius=1.0, color=(0.75, 0.75, 0.75),)
+        light_path = f"/World/envs/env_0/Light4"
+        light_cfg_4.func(light_path, light_cfg_4, translation=(-1.5, -1.0, 1.0))
 
         # 7. add spawn point
         parent_prim = prim_utils.get_prim_at_path("/World/envs/env_0/Track/Spawn_Point")
@@ -82,9 +116,6 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         # Convert to tensors and make relative to env_0
         # [17, 3] and [17, 4]
         local_pos = torch.tensor([p[0] for p in poses], device=self.device) - self.scene.env_origins[0]
-
-        #for pose in poses:
-        #    print("pose: ", pose)
 
         self.spawn_quat_tensor = torch.tensor([p[1] for p in poses], device=self.device)
         angle_rad = torch.tensor([np.pi / 2], device=self.device)
@@ -219,7 +250,6 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
 
     def _get_observations(self) -> dict:
         #print("self.total_step: ", self.total_step)
-
         robot_pos = self.robot.data.root_pos_w
         robot_z_position = robot_pos[:, 2]
 
@@ -434,3 +464,5 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
 
         # 5. Write the state back to the physics simulation
         self.robot.write_root_state_to_sim(root_state, env_ids)
+
+        # Set the seed at the very beginning of your main function

@@ -17,6 +17,23 @@ from isaaclab.sensors import CameraCfg, TiledCameraCfg
 from isaaclab.utils import configclass
 import isaaclab.sim as sim_utils
 
+from isaaclab.utils import configclass
+from isaaclab.managers import EventTermCfg as EventTerm
+from isaac_lab_jetbot_orin.randomization.light_dr import randomize_lights
+
+
+@configclass
+class JetbotEventCfg:
+    # Randomize lights at every episode reset
+    randomize_env_lights = EventTerm(
+        func=randomize_lights,
+        mode="reset",
+        params={
+            "intensity_range": (500.0, 4000.0),
+            "color_range": ((0.4, 0.4, 0.4), (1.0, 1.0, 1.0)),
+        },
+    )
+
 
 @configclass
 class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
@@ -44,9 +61,7 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
     # Track Configuration
     # We use AssetBaseCfg for a static mesh that doesn't need joint control
     #usd_path = os.path.join(os.getcwd(), "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/simple_straight_track.usd")
-
     usd_path = os.path.join(os.getcwd(), "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/simple_curved_track.usd")
-
     #usd_path = os.path.join(os.getcwd(), "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/starter_kit_track.usd")
 
     track_cfg = RigidObjectCfg(
@@ -71,7 +86,7 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
                                         convention="opengl"),
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
-            focal_length=0.26, focus_distance=6.0, horizontal_aperture=2.4, clipping_range=(0.01, 20.0)
+            focal_length=0.26, focus_distance=6.0, horizontal_aperture=2.4, clipping_range=(0.01, 5.0)
         ),
         width=640,
         height=480,
@@ -84,11 +99,13 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
                                         convention="opengl"),
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
-            focal_length=0.26, focus_distance=6.0, horizontal_aperture=2.4, clipping_range=(0.01, 20.0)
+            focal_length=0.26, focus_distance=6.0, horizontal_aperture=2.4, clipping_range=(0.01, 5.0)
         ),
         width=640,
         height=480,
     )
+
+    events: JetbotEventCfg = JetbotEventCfg()
     
     # robot(s)
     robot_cfg: ArticulationCfg = JETBOT_CONFIG.replace(prim_path="/World/envs/env_.*/Robot")
