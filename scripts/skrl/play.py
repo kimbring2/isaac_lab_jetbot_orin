@@ -168,17 +168,19 @@ def main():
         )
         #pass
 
+    #print("resume_path: ", resume_path)
+    # resume_path:  /home/kimbring2/isaac_lab_jetbot_orin/logs/skrl/jetbot_orin_direct/
+    # 2026-03-19_09-53-15_ppo_torch/checkpoints/agent_100000.pt
+
     # Debug purpose - For selecting checkpoint manually
-    '''
-    root_path = '/media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/isaac_lab_jetbot_orin/logs/skrl/jetbot_orin_direct'
-    folder_name = '2026-02-12_16-57-49_ppo_torch'
+    root_path = '/home/kimbring2/isaac_lab_jetbot_orin/logs/skrl/jetbot_orin_direct'
+    folder_name = '2026-03-19_09-53-15_ppo_torch'
     resume_path = os.path.join(root_path, folder_name)
     resume_path = os.path.join(resume_path, "checkpoints")
-    epoch = 30000
+    epoch = 100000
     file_name = "agent_{}.pt".format(epoch)
     resume_path = os.path.join(resume_path, file_name)
-    '''
-
+    
     log_dir = os.path.dirname(os.path.dirname(resume_path))
 
     # create isaac environment
@@ -195,6 +197,7 @@ def main():
         dt = env.unwrapped.step_dt
 
     # wrap for video recording
+    '''
     if args_cli.video:
         video_kwargs = {
             "video_folder": os.path.join(log_dir, "videos", "play"),
@@ -205,6 +208,7 @@ def main():
         print("[INFO] Recording videos during training.")
         print_dict(video_kwargs, nesting=4)
         env = gym.wrappers.RecordVideo(env, **video_kwargs)
+    '''
 
     # wrap around environment for skrl
     env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework)  # same as: `wrap_env(env, wrapper="auto")`
@@ -245,7 +249,6 @@ def main():
             
             # env stepping
             # print information from the sensors
-
             # Debug purpose - For rendering camera sensor image
             '''
             left_camera_image = env.scene["left_camera"].data.output["rgb"]
@@ -290,21 +293,21 @@ def main():
             '''
 
             # Debug purpose - For keyboard manual control
-            
             '''
+            action_value = 7.5
             if key_input == 'w':
-                actions = torch.tensor([10.0, 10.0], device='cuda:0')
+                actions = torch.tensor([action_value, action_value], device='cuda:0')
             elif key_input == 'a':
-                actions = torch.tensor([-10.0, 10.0], device='cuda:0')
+                actions = torch.tensor([-action_value, action_value], device='cuda:0')
             elif key_input == 'd':
-                actions = torch.tensor([10.0, -10.0], device='cuda:0')
+                actions = torch.tensor([action_value, -action_value], device='cuda:0')
             elif key_input == 's':
-                actions = torch.tensor([-10.0, -10.0], device='cuda:0')
+                actions = torch.tensor([-action_value, -action_value], device='cuda:0')
             else:
                 actions = torch.tensor([0.0, 0.0], device='cuda:0')
             '''
 
-            #print("actions: ", actions)
+            print("actions: ", actions)
             obs, _, _, _, _ = env.step(actions)
 
         if args_cli.video:

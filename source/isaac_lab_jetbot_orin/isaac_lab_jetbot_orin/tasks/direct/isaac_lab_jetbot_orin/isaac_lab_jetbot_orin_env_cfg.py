@@ -42,7 +42,7 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
     episode_length_s = 30.0
     
     # - spaces definition
-    action_space = 2
+    action_space = spaces.Box(low=-7.5, high=7.5, shape=(2,), dtype=np.float32)
     #action_space = gym.spaces.Discrete(25)
     
     #observation_space = 3

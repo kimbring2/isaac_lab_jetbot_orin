@@ -74,21 +74,6 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
 
         # 6. add lights
         # Example per‑env light (if you want per-env control)
-        '''
-        light_cfg_1 = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
-        light_cfg_1.func("/World/Light1", light_cfg_1, translation=(0.0, 0.0, 1.0))
-        
-        light_cfg_2 = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
-        light_cfg_2.func("/World/Light2", light_cfg_2, translation=(0.0, -1.0, 1.0))
-        
-        light_cfg_3 = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
-        light_cfg_3.func("/World/Light3", light_cfg_3, translation=(-1.5, 0.0, 1.0))
-        
-        light_cfg_4 = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
-        light_cfg_4.func("/World/Light4", light_cfg_4, translation=(-1.5, -1.0, 1.0))
-        '''
-
-        # Example per‑env light (if you want per-env control)
         light_cfg_1 = sim_utils.SphereLightCfg(intensity=2000.0, radius=1.0, color=(0.75, 0.75, 0.75), )
         light_path = f"/World/envs/env_0/Light1"
         light_cfg_1.func(light_path, light_cfg_1, translation=(0.0, 0.0, 1.0))
@@ -290,6 +275,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         # left_camera_input.shape:  torch.Size([2, 3, 480, 640])
         # scalar_map.shape:  torch.Size([2, 2, 480, 640])
         combined_input = torch.cat([left_camera_gray, scalar_map], dim=1)
+        #combined_input = left_camera_gray
         combined_input = torch.cat([combined_input, right_camera_gray], dim=1)
 
         observations = {"policy": combined_input}
@@ -437,7 +423,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         
         # 2. Reset the actions buffer to zero
         # This ensures no old commands persist in the next step
-        self.actions[:] = 12
+        self.actions[:] = 0.0
 
         # 1. Determine how many spawn points are available per environment (usually 17)
         num_points_per_env = self.spawn_pos_tensor.shape[1]
