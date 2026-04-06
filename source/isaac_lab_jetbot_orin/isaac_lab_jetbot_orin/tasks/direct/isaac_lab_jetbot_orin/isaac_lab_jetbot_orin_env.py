@@ -208,10 +208,9 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         line_starts_list = all_envs_starts.reshape(-1, 3).tolist()
         line_ends_list = all_envs_ends.reshape(-1, 3).tolist()
 
-        # 6. Render the lines
-        colors = [[1.0, 0.5, 0.0, 1.0]] * len(line_starts_list) # Orange
-        widths = [2.0] * len(line_starts_list)
-
+        # Render the lines
+        #colors = [[1.0, 0.5, 0.0, 1.0]] * len(line_starts_list) # Orange
+        #widths = [2.0] * len(line_starts_list)
         #self.draw.draw_lines(line_starts_list, line_ends_list, colors, widths)
 
         self.milestones_reached = torch.zeros((self.num_envs, 4), device=self.device, dtype=torch.bool)
@@ -249,6 +248,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         self.forwards = math_utils.quat_apply(self.robot.data.root_link_quat_w, self.robot.data.FORWARD_VEC_B)
 
         forward_speed = self.robot.data.root_com_lin_vel_b[:,0].reshape(-1,1)
+        #print("forward_speed: ", forward_speed)
         obs = -forward_speed
 
         left_camera_image = self.scene["left_camera"].data.output["rgb"]

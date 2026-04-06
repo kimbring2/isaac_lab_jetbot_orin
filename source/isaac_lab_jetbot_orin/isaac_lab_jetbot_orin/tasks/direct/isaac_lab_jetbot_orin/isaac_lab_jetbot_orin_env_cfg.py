@@ -19,7 +19,9 @@ import isaaclab.sim as sim_utils
 
 from isaaclab.utils import configclass
 from isaaclab.managers import EventTermCfg as EventTerm
+from isaaclab.managers import SceneEntityCfg
 from isaac_lab_jetbot_orin.randomization.light_dr import randomize_lights
+from isaac_lab_jetbot_orin.randomization.mesh_dr import change_track_texture, change_curtain_texture
 
 
 @configclass
@@ -34,6 +36,22 @@ class JetbotEventCfg:
         },
     )
 
+    randomize_track_appearance = EventTerm(
+        func=change_track_texture,
+        mode="interval", # Change from 'reset' to 'interval'
+        interval_range_s=(30, 30), # Fires exactly every 5000 steps
+        params={
+            "new_straight_texture_path": "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/textures/straight",
+        },
+    )
+
+    randomize_curtain_appearance = EventTerm(
+        func=change_curtain_texture,
+        mode="interval", # Change from 'reset' to 'interval'
+        interval_range_s=(30, 30), # Fires exactly every 5000 steps
+    )
+    
+    
 
 @configclass
 class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
@@ -105,6 +123,7 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
         height=480,
     )
 
+    # /home/kimbring2/isaac_lab_jetbot_orin/source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/textures/straight/straight_1.png
     events: JetbotEventCfg = JetbotEventCfg()
     
     # robot(s)
