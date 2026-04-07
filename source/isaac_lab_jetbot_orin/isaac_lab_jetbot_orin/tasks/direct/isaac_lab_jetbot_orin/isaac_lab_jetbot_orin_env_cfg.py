@@ -22,6 +22,9 @@ from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import SceneEntityCfg
 from isaac_lab_jetbot_orin.randomization.light_dr import randomize_lights
 from isaac_lab_jetbot_orin.randomization.mesh_dr import change_track_texture, change_curtain_texture
+from isaac_lab_jetbot_orin.randomization.camera_dr import randomize_camera_parameters
+from isaac_lab_jetbot_orin.randomization.motor_dr import randomize_motor_parameters
+
 
 
 @configclass
@@ -50,9 +53,28 @@ class JetbotEventCfg:
         mode="interval", # Change from 'reset' to 'interval'
         interval_range_s=(30, 30), # Fires exactly every 5000 steps
     )
-    
-    
 
+    randomize_camera_parameters = EventTerm(
+        func=randomize_camera_parameters,
+        mode="interval",
+        interval_range_s=(30, 30),
+        params={
+            "focal_length_range": (0.23, 0.29),
+            "focus_dist_range": (5.7, 6.3)
+        },
+    )
+
+    randomize_motor_parameters = EventTerm(
+        func=randomize_motor_parameters,
+        mode="interval",
+        interval_range_s=(30, 30),
+        params={
+            "damping_range": (160.0, 190.0),
+            "stiffness_range": (0.0, 5.0),
+        },
+    )
+    
+    
 @configclass
 class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
     # env
