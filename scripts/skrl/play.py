@@ -163,9 +163,9 @@ def main():
     elif args_cli.checkpoint:
         resume_path = os.path.abspath(args_cli.checkpoint)
     else:
-        #resume_path = get_checkpoint_path(
-        #    log_root_path, run_dir=f".*_{algorithm}_{args_cli.ml_framework}", other_dirs=["checkpoints"]
-        #)
+        resume_path = get_checkpoint_path(
+            log_root_path, run_dir=f".*_{algorithm}_{args_cli.ml_framework}", other_dirs=["checkpoints"]
+        )
         pass
 
     #print("resume_path: ", resume_path)
@@ -173,17 +173,17 @@ def main():
     # 2026-03-19_09-53-15_ppo_torch/checkpoints/agent_100000.pt
 
     # Debug purpose - For selecting checkpoint manually
-    '''
+    
     root_path = '/home/kimbring2/isaac_lab_jetbot_orin/logs/skrl/jetbot_orin_direct'
-    folder_name = '2026-03-19_09-53-15_ppo_torch'
+    folder_name = '2026-04-07_12-13-35_ppo_torch'
     resume_path = os.path.join(root_path, folder_name)
     resume_path = os.path.join(resume_path, "checkpoints")
-    epoch = 100000
+    epoch = 200000
     file_name = "agent_{}.pt".format(epoch)
     resume_path = os.path.join(resume_path, file_name)
     
     log_dir = os.path.dirname(os.path.dirname(resume_path))
-    '''
+    
 
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
@@ -223,7 +223,7 @@ def main():
     runner = Runner(env, experiment_cfg)
 
     #print(f"[INFO] Loading model checkpoint from: {resume_path}")
-    #runner.agent.load(resume_path)
+    runner.agent.load(resume_path)
     
     # set agent to evaluation mode
     runner.agent.set_running_mode("eval")
@@ -239,7 +239,7 @@ def main():
         # run everything in inference mode
         with torch.inference_mode():
             # agent stepping
-            #print("runner.agent: ", runner.agent)
+            #print("rize_track_scaleunner.agent: ", runner.agent)
             outputs = runner.agent.act(obs, timestep=0, timesteps=0)
             
             # - multi-agent (deterministic) actions
@@ -252,7 +252,7 @@ def main():
             # env stepping
             # print information from the sensors
             # Debug purpose - For rendering camera sensor image
-            '''
+            
             left_camera_image = env.scene["left_camera"].data.output["rgb"]
             left_camera_image_0 = left_camera_image.cpu().numpy()
 
@@ -289,11 +289,10 @@ def main():
             left_gray_resized = left_gray_resized.astype(np.uint8) 
             #print("left_gray_resized.shape: ", left_gray_resized.shape)
             #print("left_camera_gray_0.shape: ", left_camera_gray_0.shape)
-            #cv2.imshow('Stereo View Of Robot 1', left_gray_resized)
+            cv2.imshow('Stereo View Of Robot 1', left_gray_resized)
             #cv2.imshow('Stereo View Of Robot 2', combined_image_1)
-            #cv2.waitKey(1) # Required for the window to refresh
-            '''
-
+            cv2.waitKey(1) # Required for the window to refresh
+            
             # Debug purpose - For keyboard manual control
             '''
             action_value = 7.5

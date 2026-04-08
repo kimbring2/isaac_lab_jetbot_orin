@@ -16,6 +16,7 @@ from isaaclab.sim import SimulationCfg
 from isaaclab.sensors import CameraCfg, TiledCameraCfg
 from isaaclab.utils import configclass
 import isaaclab.sim as sim_utils
+import isaaclab.envs.mdp as mdp
 
 from isaaclab.utils import configclass
 from isaaclab.managers import EventTermCfg as EventTerm
@@ -24,7 +25,6 @@ from isaac_lab_jetbot_orin.randomization.light_dr import randomize_lights
 from isaac_lab_jetbot_orin.randomization.mesh_dr import change_track_texture, change_curtain_texture
 from isaac_lab_jetbot_orin.randomization.camera_dr import randomize_camera_parameters
 from isaac_lab_jetbot_orin.randomization.motor_dr import randomize_motor_parameters
-
 
 
 @configclass
@@ -59,8 +59,8 @@ class JetbotEventCfg:
         mode="interval",
         interval_range_s=(30, 30),
         params={
-            "focal_length_range": (0.23, 0.29),
-            "focus_dist_range": (5.7, 6.3)
+            "focal_length_range": (2.3, 2.9),
+            "focus_dist_range": (55.0, 66.0)
         },
     )
 
@@ -126,7 +126,7 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
                                         convention="opengl"),
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
-            focal_length=0.26, focus_distance=6.0, horizontal_aperture=2.4, clipping_range=(0.01, 5.0)
+            focal_length=2.6, focus_distance=60.0, horizontal_aperture=3.67, clipping_range=(0.01, 5.0)
         ),
         width=640,
         height=480,
@@ -139,7 +139,7 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
                                         convention="opengl"),
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
-            focal_length=0.26, focus_distance=6.0, horizontal_aperture=2.4, clipping_range=(0.01, 5.0)
+            focal_length=2.6, focus_distance=60.0, horizontal_aperture=3.67, clipping_range=(0.01, 5.0)
         ),
         width=640,
         height=480,
