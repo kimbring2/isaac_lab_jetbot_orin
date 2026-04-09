@@ -34,8 +34,52 @@ from isaacsim.core.utils.extensions import enable_extension
 import isaacsim.core.utils.prims as prim_utils
 from isaacsim.core.utils.xforms import get_world_pose
 
-
 #import isaacsim.util.debug_draw._debug_draw as _debug_draw
+
+def quat_to_euler(q):
+    """
+    Converts quaternions [x, y, z, w] to Euler angles [roll, pitch, yaw]
+    """
+    x, y, z, w = q[:, 0], q[:, 1], q[:, 2], q[:, 3]
+    
+    # Roll (x-axis rotation)
+    sinr_cosp = 2 * (w * x + y * z)
+    cosr_cosp = 1 - 2 * (x * x + y * y)
+    roll = torch.atan2(sinr_cosp, cosr_cosp)
+
+    # Pitch (y-axis rotation)
+    sinp = 2 * (w * y - z * x)
+    pitch = torch.where(torch.abs(sinp) >= 1, 
+                        torch.sign(sinp) * (torch.pi / 2), 
+                        torch.asin(sinp))
+
+    # Yaw (z-axis rotation)
+    siny_cosp = 2 * (w * z + x * y)
+    cosy_cosp = 1 - 2 * (y * y + z * z)
+    yaw = torch.atan2(siny_cosp, cosy_cosp)
+
+    return torch.stack([roll, pitch, yaw], dim=-1)
+
+
+def euler_to_quat(euler):
+    """
+    Converts Euler angles [roll, pitch, yaw] to quaternions [x, y, z, w]
+    """
+    roll, pitch, yaw = euler[:, 0], euler[:, 1], euler[:, 2]
+    
+    cy = torch.cos(yaw * 0.5)
+    sy = torch.sin(yaw * 0.5)
+    cp = torch.cos(pitch * 0.5)
+    sp = torch.sin(pitch * 0.5)
+    cr = torch.cos(roll * 0.5)
+    sr = torch.sin(roll * 0.5)
+
+    x = sr * cp * cy - cr * sp * sy
+    y = cr * sp * cy + sr * cp * sy
+    z = cr * cp * sy - sr * sp * cy
+    w = cr * cp * cy + sr * sp * sy
+
+    return torch.stack([x, y, z, w], dim=-1)
 
 
 class IsaacLabJetbotOrinEnv(DirectRLEnv):
@@ -215,6 +259,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
 
         self.milestones_reached = torch.zeros((self.num_envs, 4), device=self.device, dtype=torch.bool)
         self.total_step = 0
+        self.total_reward = torch.zeros((self.num_envs, 1), device=self.device, dtype=torch.float32)
 
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
         self.actions = actions.clone()
@@ -322,7 +367,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
             self._reset_idx(reach_goal_env_ids)
 
         forward_reward = -self.robot.data.root_com_lin_vel_b[:,0].reshape(-1,1)
-        #print("forward_reward * 10.0: ", forward_reward * 10.0)
+        #print("forward_reward / 10.0: ", forward_reward / 10.0)
         total_reward += forward_reward / 10.0
 
         # Inside _get_rewards
@@ -403,7 +448,26 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
                     # Draw lines for this specific environment
                     #self.draw.draw_lines(draw_starts, draw_ends, colors, [10.0] * len(draw_starts))
 
-        #print("total_reward: ", total_reward)
+        #print("total_reward: ", total_reward)            
+
+        self.total_reward += total_reward
+        #print("self.total_reward: ", self.total_reward)
+
+        reset_mask = self.total_reward.squeeze(-1) > 1.0
+        #print("reset_mask: ", reset_mask)
+        #print("")
+
+        # 2. Get the indices of those environments
+        env_ids = reset_mask.nonzero(as_tuple=False).flatten()
+
+        # 3. If any environments need resetting:
+        if len(env_ids) > 0:
+            # Reset the reward tracker for these specific envs
+            self.total_reward[env_ids] = 0.0
+            
+            # Call your reset function with the batch of IDs
+            self._reset_idx(env_ids)
+
         return total_reward
 
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
@@ -423,7 +487,9 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         
         # 2. Reset the actions buffer to zero
         # This ensures no old commands persist in the next step
+        #print("self.total_reward: ", self.total_reward)
         self.actions[:] = 0.0
+        self.total_reward[env_ids] = 0.0
 
         # 1. Determine how many spawn points are available per environment (usually 17)
         num_points_per_env = self.spawn_pos_tensor.shape[1]
@@ -437,6 +503,22 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         # Shape: [num_resets, 3] and [num_resets, 4]
         selected_pos = self.spawn_pos_tensor[env_ids, point_indices]
         selected_quat = self.spawn_quat_tensor[point_indices] # Rotation is usually local/same for all envs
+        #selected_quat = torch.tensor([[1.0000e+00,  2.1049e-08,  2.1049e-08,  1.1555e-03]], device='cuda:0', dtype=torch.float64)
+        #print("selected_quat: ", selected_quat)
+        # selected_quat:  tensor([[-1.0000e+00,  2.1049e-08,  2.1049e-08,  1.1555e-03]], device='cuda:0', dtype=torch.float64)
+
+        # 1. Convert the current orientation to Euler angles (Roll, Pitch, Yaw)
+        euler_angles = quat_to_euler(selected_quat) # Shape: [num_resets, 3]
+
+        # 2. Create a random mask (50% chance to flip)
+        flip_mask = torch.rand(len(env_ids), device=self.device) > 0.5
+
+        # 3. Add 180 degrees (pi) to the Yaw (index 2) where the mask is True
+        # We use torch.pi for 180 degrees
+        euler_angles[flip_mask, 0] += torch.pi
+
+        # 4. Convert back to Quaternion
+        selected_quat_rotated = euler_to_quat(euler_angles)
 
         # 4. Prepare the new root state
         # Root state format: [pos(3), quat(4), lin_vel(3), ang_vel(3)]

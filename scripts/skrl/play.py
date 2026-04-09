@@ -163,9 +163,9 @@ def main():
     elif args_cli.checkpoint:
         resume_path = os.path.abspath(args_cli.checkpoint)
     else:
-        resume_path = get_checkpoint_path(
-            log_root_path, run_dir=f".*_{algorithm}_{args_cli.ml_framework}", other_dirs=["checkpoints"]
-        )
+        #resume_path = get_checkpoint_path(
+        #    log_root_path, run_dir=f".*_{algorithm}_{args_cli.ml_framework}", other_dirs=["checkpoints"]
+        #)
         pass
 
     #print("resume_path: ", resume_path)
@@ -175,16 +175,15 @@ def main():
     # Debug purpose - For selecting checkpoint manually
     
     root_path = '/home/kimbring2/isaac_lab_jetbot_orin/logs/skrl/jetbot_orin_direct'
-    folder_name = '2026-04-07_12-13-35_ppo_torch'
+    folder_name = '2026-04-08_18-04-26_ppo_torch'
     resume_path = os.path.join(root_path, folder_name)
     resume_path = os.path.join(resume_path, "checkpoints")
-    epoch = 200000
+    epoch = 500000
     file_name = "agent_{}.pt".format(epoch)
     resume_path = os.path.join(resume_path, file_name)
     
     log_dir = os.path.dirname(os.path.dirname(resume_path))
     
-
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
 
@@ -289,12 +288,12 @@ def main():
             left_gray_resized = left_gray_resized.astype(np.uint8) 
             #print("left_gray_resized.shape: ", left_gray_resized.shape)
             #print("left_camera_gray_0.shape: ", left_camera_gray_0.shape)
-            cv2.imshow('Stereo View Of Robot 1', left_gray_resized)
+            #cv2.imshow('Stereo View Of Robot 1', left_gray_resized)
             #cv2.imshow('Stereo View Of Robot 2', combined_image_1)
-            cv2.waitKey(1) # Required for the window to refresh
+            #cv2.waitKey(1) # Required for the window to refresh
             
             # Debug purpose - For keyboard manual control
-            '''
+            
             action_value = 7.5
             if key_input == 'w':
                 actions = torch.tensor([action_value, action_value], device='cuda:0')
@@ -306,8 +305,8 @@ def main():
                 actions = torch.tensor([-action_value, -action_value], device='cuda:0')
             else:
                 actions = torch.tensor([0.0, 0.0], device='cuda:0')
-            '''
-            actions = torch.clamp(actions, min=-7.5, max=7.5)
+            
+            #actions = torch.clamp(actions, min=-7.5, max=7.5)
             #print("actions: ", actions)
 
             obs, _, _, _, _ = env.step(actions)
