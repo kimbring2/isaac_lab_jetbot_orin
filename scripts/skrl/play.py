@@ -163,9 +163,9 @@ def main():
     elif args_cli.checkpoint:
         resume_path = os.path.abspath(args_cli.checkpoint)
     else:
-        #resume_path = get_checkpoint_path(
-        #    log_root_path, run_dir=f".*_{algorithm}_{args_cli.ml_framework}", other_dirs=["checkpoints"]
-        #)
+        resume_path = get_checkpoint_path(
+            log_root_path, run_dir=f".*_{algorithm}_{args_cli.ml_framework}", other_dirs=["checkpoints"]
+        )
         pass
 
     #print("resume_path: ", resume_path)
@@ -173,7 +173,7 @@ def main():
     # 2026-03-19_09-53-15_ppo_torch/checkpoints/agent_100000.pt
 
     # Debug purpose - For selecting checkpoint manually
-    
+    '''
     root_path = '/home/kimbring2/isaac_lab_jetbot_orin/logs/skrl/jetbot_orin_direct'
     folder_name = '2026-04-08_18-04-26_ppo_torch'
     resume_path = os.path.join(root_path, folder_name)
@@ -181,7 +181,7 @@ def main():
     epoch = 500000
     file_name = "agent_{}.pt".format(epoch)
     resume_path = os.path.join(resume_path, file_name)
-    
+    '''
     log_dir = os.path.dirname(os.path.dirname(resume_path))
     
     # create isaac environment

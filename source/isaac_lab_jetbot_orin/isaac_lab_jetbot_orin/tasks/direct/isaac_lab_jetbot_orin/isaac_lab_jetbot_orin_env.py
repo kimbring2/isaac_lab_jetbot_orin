@@ -367,7 +367,6 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
             self._reset_idx(reach_goal_env_ids)
 
         forward_reward = -self.robot.data.root_com_lin_vel_b[:,0].reshape(-1,1)
-        #print("forward_reward / 10.0: ", forward_reward / 10.0)
         total_reward += forward_reward / 10.0
 
         # Inside _get_rewards
@@ -447,15 +446,9 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
                     
                     # Draw lines for this specific environment
                     #self.draw.draw_lines(draw_starts, draw_ends, colors, [10.0] * len(draw_starts))
-
-        #print("total_reward: ", total_reward)            
-
+         
         self.total_reward += total_reward
-        #print("self.total_reward: ", self.total_reward)
-
         reset_mask = self.total_reward.squeeze(-1) > 1.0
-        #print("reset_mask: ", reset_mask)
-        #print("")
 
         # 2. Get the indices of those environments
         env_ids = reset_mask.nonzero(as_tuple=False).flatten()
@@ -467,6 +460,8 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
             
             # Call your reset function with the batch of IDs
             self._reset_idx(env_ids)
+
+        #print("self.total_reward: ", self.total_reward)
 
         return total_reward
 
@@ -488,7 +483,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         # 2. Reset the actions buffer to zero
         # This ensures no old commands persist in the next step
         #print("self.total_reward: ", self.total_reward)
-        self.actions[:] = 0.0
+        self.actions[env_ids] = 0.0
         self.total_reward[env_ids] = 0.0
 
         # 1. Determine how many spawn points are available per environment (usually 17)

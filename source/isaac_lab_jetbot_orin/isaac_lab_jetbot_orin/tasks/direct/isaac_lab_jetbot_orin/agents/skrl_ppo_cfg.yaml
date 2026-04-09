@@ -11,9 +11,9 @@ models:
     min_action: -7.5        # Define the lower bound
     max_action: 7.5         # Define the upper bound
     clip_log_std: True
-    min_log_std: -20.0
+    min_log_std: -2.0
     max_log_std: 2.0
-    initial_log_std: 0.0
+    initial_log_std: 1.0
     network:
       - name: net
         input: STATES  # skrl handles the [8, 480, 640] shape automatically if defined in env
