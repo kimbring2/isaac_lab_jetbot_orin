@@ -38,7 +38,7 @@ class JetbotEventCfg:
             "color_range": ((0.4, 0.4, 0.4), (1.0, 1.0, 1.0)),
         },
     )
-
+    
     randomize_track_appearance = EventTerm(
         func=change_track_texture,
         mode="interval", # Change from 'reset' to 'interval'
@@ -73,8 +73,8 @@ class JetbotEventCfg:
             "stiffness_range": (0.0, 5.0),
         },
     )
-    
-    
+
+ 
 @configclass
 class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
     # env

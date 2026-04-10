@@ -34,7 +34,7 @@ from isaacsim.core.utils.extensions import enable_extension
 import isaacsim.core.utils.prims as prim_utils
 from isaacsim.core.utils.xforms import get_world_pose
 
-#import isaacsim.util.debug_draw._debug_draw as _debug_draw
+import isaacsim.util.debug_draw._debug_draw as _debug_draw
 
 def quat_to_euler(q):
     """
@@ -446,7 +446,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
                     
                     # Draw lines for this specific environment
                     #self.draw.draw_lines(draw_starts, draw_ends, colors, [10.0] * len(draw_starts))
-         
+        
         self.total_reward += total_reward
         reset_mask = self.total_reward.squeeze(-1) > 1.0
 
@@ -459,7 +459,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
             self.total_reward[env_ids] = 0.0
             
             # Call your reset function with the batch of IDs
-            self._reset_idx(env_ids)
+            #self._reset_idx(env_ids)
 
         #print("self.total_reward: ", self.total_reward)
 
@@ -482,7 +482,6 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         
         # 2. Reset the actions buffer to zero
         # This ensures no old commands persist in the next step
-        #print("self.total_reward: ", self.total_reward)
         self.actions[env_ids] = 0.0
         self.total_reward[env_ids] = 0.0
 
