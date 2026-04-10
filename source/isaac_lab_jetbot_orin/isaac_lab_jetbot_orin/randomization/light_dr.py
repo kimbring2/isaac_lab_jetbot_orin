@@ -12,6 +12,9 @@ def randomize_lights(env, env_ids, intensity_range=(500.0, 5000.0),
         intensity_range: (min, max) intensity.
         color_range: ((r_min, g_min, b_min), (r_max, g_max, b_max)).
     """
+    #print("randomize_lights()")
+    #print("env_ids: ", env_ids)
+
     device = env.device
     env_ids = env_ids.to(device)
     num = env_ids.shape[0]

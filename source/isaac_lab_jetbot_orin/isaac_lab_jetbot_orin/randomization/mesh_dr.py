@@ -15,6 +15,8 @@ def change_curtain_texture(
     env,
     env_ids
 ):
+    #print("change_curtain_texture, env_ids: ", env_ids)
+
     for i, env_id in enumerate(env_ids.tolist()):
         # 1. Base path
         track_base_path = f"/World/envs/env_{env_id}/Track/simple_curved_track/Visuals"
@@ -44,30 +46,20 @@ def change_curtain_texture(
 def change_track_texture(
     env,
     env_ids,
-    new_straight_texture_path: str = "/home/kimbring2/.../textures/straight_2.png" # Full path
+    texture_folder_path: str
 ):
-    stage = env.sim.stage
-  
+    if env_ids is None:
+        env_ids = torch.arange(env.num_envs, device=env.device)
+
     # 1. Define the directory path
-    new_straight_texture_paths_dir = os.path.join(os.getcwd(), new_straight_texture_path)
-
-    # 2. Gather all PNG files in that folder
-    # glob.glob returns a list of full strings: ['/path/to/straight_1.png', '/path/to/straight_2.png', ...]
-    available_straight_textures = glob.glob(os.path.join(new_straight_texture_paths_dir, "*.png"))
-
+    new_texture_paths = os.path.join(os.getcwd(), texture_folder_path)
     for i, env_id in enumerate(env_ids.tolist()):
         # 3. Select one path randomly
-        if available_straight_textures:
-            new_straight_texture_path = np.random.choice(available_straight_textures)
-        else:
-            new_straight_texture_path = None
-            print(f"Warning: No textures found in {new_straight_texture_paths_dir}")
+        image_id = random.randint(1, 100)
 
-        straight_filename = new_straight_texture_path.split("/")[-1]
-        straight_file_number = re.search(r'\d+', straight_filename).group()
-
-        new_curve_texture_path = "/".join(new_straight_texture_path.split("/")[:-2]) + "/curve_left" + "/curve_left_{}.png".format(straight_file_number)
-        new_black_texture_path = "/".join(new_straight_texture_path.split("/")[:-2]) + "/black" + "/black_tile_{}.png".format(straight_file_number)
+        new_straight_texture_path = os.path.join(new_texture_paths, "straight/straight_{}.png".format(image_id))
+        new_curve_texture_path = os.path.join(new_texture_paths, "curve_left/curve_left_{}.png".format(image_id))
+        new_black_texture_path = os.path.join(new_texture_paths, "black/black_tile_{}.png".format(image_id))
 
         # 1. Base path for the Track in a specific environment
         track_base_path = f"/World/envs/env_{env_id}/Track/simple_curved_track/Visuals"

@@ -42,12 +42,12 @@ class JetbotEventCfg:
     randomize_track_appearance = EventTerm(
         func=change_track_texture,
         mode="interval", # Change from 'reset' to 'interval'
-        interval_range_s=(30, 30), # Fires exactly every 5000 steps
+        interval_range_s=(300, 300), # Fires exactly every 5000 steps
         params={
-            "new_straight_texture_path": "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/textures/straight",
+            "texture_folder_path": "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/textures",
         },
     )
-
+    
     randomize_curtain_appearance = EventTerm(
         func=change_curtain_texture,
         mode="interval", # Change from 'reset' to 'interval'
