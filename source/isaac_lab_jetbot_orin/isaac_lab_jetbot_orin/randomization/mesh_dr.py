@@ -67,6 +67,7 @@ def change_track_texture(
         straight_file_number = re.search(r'\d+', straight_filename).group()
 
         new_curve_texture_path = "/".join(new_straight_texture_path.split("/")[:-2]) + "/curve_left" + "/curve_left_{}.png".format(straight_file_number)
+        new_black_texture_path = "/".join(new_straight_texture_path.split("/")[:-2]) + "/black" + "/black_tile_{}.png".format(straight_file_number)
 
         # 1. Base path for the Track in a specific environment
         track_base_path = f"/World/envs/env_{env_id}/Track/simple_curved_track/Visuals"
@@ -75,6 +76,7 @@ def change_track_texture(
         # Adjust this path if 'straight_8' is bound to a different material than 'Looks/straight_1'
         straight_mat_path = f"{track_base_path}/Looks/straight_1"
         curve_mat_path = f"{track_base_path}/Looks/curve_left_1"
+        black_mat_path = f"{track_base_path}/Looks/black_tile"
         
         # Verify the material exists
         if not is_prim_path_valid(straight_mat_path):
@@ -85,9 +87,14 @@ def change_track_texture(
             # carb.log_warn(f"Material not found at: {mat_path}")
             return
 
+        if not is_prim_path_valid(black_mat_path):
+            # carb.log_warn(f"Material not found at: {mat_path}")
+            return
+
         straight_mat_prim = get_prim_at_path(straight_mat_path)
         curve_mat_prim = get_prim_at_path(curve_mat_path)
-        
+        black_mat_prim = get_prim_at_path(black_mat_path)
+
         # We can skip the 'Looks/straight_1/Shader' step and set the input directly
         # on the material if it has been correctly connected, but setting it on
         # the Shader prim is the most direct approach based on image_1.png
@@ -98,17 +105,25 @@ def change_track_texture(
         curve_shader_path = f"{curve_mat_path}/Shader"
         if not is_prim_path_valid(curve_shader_path):
             return
+
+        black_shader_path = f"{black_mat_path}/Shader"
+        if not is_prim_path_valid(black_shader_path):
+            return
             
         straight_shader_prim = get_prim_at_path(straight_shader_path)
         straight_shader = UsdShade.Shader(straight_shader_prim)
 
         curve_shader_prim = get_prim_at_path(curve_shader_path)
         curve_shader = UsdShade.Shader(curve_shader_prim)
+
+        black_shader_prim = get_prim_at_path(black_shader_path)
+        black_shader = UsdShade.Shader(black_shader_prim)
         
         # 3. Get the existing input (as shown in your screenshot)
         # The property is 'inputs:diffuse_texture'
         straight_tex_input = straight_shader.GetInput("diffuse_texture")
         curve_tex_input = curve_shader.GetInput("diffuse_texture")
+        black_tex_input = black_shader.GetInput("diffuse_texture")
         
         # 4. If it exists, set the new texture path (MUST use Sdf.AssetPath)
         if straight_tex_input:
@@ -123,6 +138,12 @@ def change_track_texture(
             if os.path.exists(new_curve_texture_path):
                 # Set the new path
                 curve_tex_input.Set(Sdf.AssetPath(new_curve_texture_path))
-                #print(f"Texture changed for: {curve_shader_path}")
             else:
                 print(f"Error: Texture file not found at {new_curve_texture_path}")
+
+        if black_tex_input:
+            if os.path.exists(new_black_texture_path):
+                # Set the new path
+                black_tex_input.Set(Sdf.AssetPath(new_black_texture_path))
+            else:
+                print(f"Error: Texture file not found at {new_black_texture_path}")
