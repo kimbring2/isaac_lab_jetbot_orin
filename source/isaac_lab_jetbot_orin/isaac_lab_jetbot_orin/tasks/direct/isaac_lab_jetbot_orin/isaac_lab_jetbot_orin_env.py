@@ -448,7 +448,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
                     #self.draw.draw_lines(draw_starts, draw_ends, colors, [10.0] * len(draw_starts))
         
         self.total_reward += total_reward
-        reset_mask = self.total_reward.squeeze(-1) > 1.0
+        reset_mask = self.total_reward.squeeze(-1) > 3.0
 
         # 2. Get the indices of those environments
         env_ids = reset_mask.nonzero(as_tuple=False).flatten()
@@ -459,7 +459,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
             self.total_reward[env_ids] = 0.0
             
             # Call your reset function with the batch of IDs
-            #self._reset_idx(env_ids)
+            self._reset_idx(env_ids)
 
         #print("self.total_reward: ", self.total_reward)
 

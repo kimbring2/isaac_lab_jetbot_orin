@@ -7,33 +7,31 @@ models:
   separate: True
   policy:
     class: GaussianMixin
-    clip_actions: True      # Changed from False to True
-    min_action: -7.5        # Define the lower bound
-    max_action: 7.5         # Define the upper bound
+    clip_actions: True
+    min_action: -7.5
+    max_action: 7.5
     clip_log_std: True
-    min_log_std: -2.0
+    min_log_std: 0.0
     max_log_std: 2.0
-    initial_log_std: 1.0
+    initial_log_std: 3.0
     network:
       - name: net
         input: STATES  # skrl handles the [8, 480, 640] shape automatically if defined in env
         layers:
           # Reduced from 32 to 16 filters
-          - conv2d: {out_channels: 32, kernel_size: 5, stride: 2}
+          - conv2d: {out_channels: 16, kernel_size: 5, stride: 2}
           # Reduced from 64 to 32 filters
-          - conv2d: {out_channels: 64, kernel_size: 3, stride: 2}
+          - conv2d: {out_channels: 32, kernel_size: 3, stride: 2}
           # Reduced from 64 to 32 filters
-          - conv2d: {out_channels: 64, kernel_size: 3, stride: 1}
+          - conv2d: {out_channels: 32, kernel_size: 3, stride: 1}
           - flatten
           # Reduced feature fusion from 512 to 256
-          - linear: {out_features: 512}
-          - linear: {out_features: 512}
+          - linear: {out_features: 256}
         activations:
           - elu
           - elu
           - elu
           - None
-          - elu
           - elu
     output: ACTIONS
   value:
@@ -43,18 +41,16 @@ models:
       - name: net
         input: STATES
         layers:
-          - conv2d: {out_channels: 32, kernel_size: 5, stride: 2}
-          - conv2d: {out_channels: 64, kernel_size: 3, stride: 2}
-          - conv2d: {out_channels: 64, kernel_size: 3, stride: 1}
+          - conv2d: {out_channels: 16, kernel_size: 5, stride: 2}
+          - conv2d: {out_channels: 32, kernel_size: 3, stride: 2}
+          - conv2d: {out_channels: 32, kernel_size: 3, stride: 1}
           - flatten
-          - linear: {out_features: 512}
-          - linear: {out_features: 512}
+          - linear: {out_features: 256}
         activations:
           - elu
           - elu
           - elu
           - None
-          - elu
           - elu
     output: ONE
 
@@ -70,27 +66,27 @@ memory:
 # https://skrl.readthedocs.io/en/latest/api/agents/ppo.html
 agent:
   class: PPO
-  rollouts: 64
-  learning_epochs: 2
+  rollouts: 32
+  learning_epochs: 8
   mini_batches: 8
   discount_factor: 0.99
   lambda: 0.95
-  learning_rate: 5.0e-05
+  learning_rate: 1.0e-04
   learning_rate_scheduler: KLAdaptiveLR
   learning_rate_scheduler_kwargs:
-    kl_threshold: 0.008
+    kl_threshold: 0.01
   state_preprocessor: RunningStandardScaler
   state_preprocessor_kwargs: null
   value_preprocessor: RunningStandardScaler
   value_preprocessor_kwargs: null
   random_timesteps: 0
   learning_starts: 0
-  grad_norm_clip: 0.5
+  grad_norm_clip: 1.0
   ratio_clip: 0.2
   value_clip: 0.2
   clip_predicted_values: True
-  entropy_loss_scale: 0.02
-  value_loss_scale: 0.5
+  entropy_loss_scale: 0.75
+  value_loss_scale: 2.0
   kl_threshold: 0.0
   rewards_shaper_scale: 0.1
   time_limit_bootstrap: False
@@ -106,5 +102,5 @@ agent:
 # https://skrl.readthedocs.io/en/latest/api/trainers/sequential.html
 trainer:
   class: SequentialTrainer
-  timesteps: 1000000
+  timesteps: 500000
   environment_info: log

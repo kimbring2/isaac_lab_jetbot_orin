@@ -175,10 +175,10 @@ def main():
     # Debug purpose - For selecting checkpoint manually
     
     root_path = '/media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/isaac_lab_jetbot_orin/logs/skrl/jetbot_orin_direct'
-    folder_name = '2026-04-10_08-31-48_ppo_torch'
+    folder_name = '2026-04-11_08-41-12_ppo_torch'
     resume_path = os.path.join(root_path, folder_name)
     resume_path = os.path.join(resume_path, "checkpoints")
-    epoch = 50000
+    epoch = 150000
     file_name = "agent_{}.pt".format(epoch)
     resume_path = os.path.join(resume_path, file_name)
     
@@ -293,7 +293,7 @@ def main():
             #cv2.waitKey(1) # Required for the window to refresh
             
             # Debug purpose - For keyboard manual control
-            
+            '''
             action_value = 7.5
             if key_input == 'w':
                 actions = torch.tensor([action_value, action_value], device='cuda:0')
@@ -305,7 +305,7 @@ def main():
                 actions = torch.tensor([-action_value, -action_value], device='cuda:0')
             else:
                 actions = torch.tensor([0.0, 0.0], device='cuda:0')
-            
+            '''
             #actions = torch.clamp(actions, min=-7.5, max=7.5)
             #print("actions: ", actions)
 

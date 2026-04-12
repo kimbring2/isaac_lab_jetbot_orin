@@ -30,6 +30,7 @@ from isaac_lab_jetbot_orin.randomization.motor_dr import randomize_motor_paramet
 @configclass
 class JetbotEventCfg:
     # Randomize lights at every episode reset
+    '''
     randomize_env_lights = EventTerm(
         func=randomize_lights,
         mode="reset",
@@ -38,7 +39,6 @@ class JetbotEventCfg:
             "color_range": ((0.4, 0.4, 0.4), (1.0, 1.0, 1.0)),
         },
     )
-
     startup_track_randomization = EventTerm(
         func=change_track_texture,
         mode="startup",
@@ -81,6 +81,7 @@ class JetbotEventCfg:
             "stiffness_range": (0.0, 5.0),
         },
     )
+    '''
 
  
 @configclass
