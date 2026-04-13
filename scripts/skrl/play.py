@@ -20,7 +20,7 @@ from torchvision.transforms import functional as VF
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Play a checkpoint of an RL agent from skrl.")
 parser.add_argument("--video", action="store_true", default=False, help="Record videos during training.")
-parser.add_argument("--video_length", type=int, default=200, help="Length of the recorded video (in steps).")
+parser.add_argument("--video_length", type=int, default=400, help="Length of the recorded video (in steps).")
 parser.add_argument(
     "--disable_fabric", action="store_true", default=False, help="Disable fabric and use USD I/O operations."
 )
@@ -163,25 +163,24 @@ def main():
     elif args_cli.checkpoint:
         resume_path = os.path.abspath(args_cli.checkpoint)
     else:
-        #resume_path = get_checkpoint_path(
-        #    log_root_path, run_dir=f".*_{algorithm}_{args_cli.ml_framework}", other_dirs=["checkpoints"]
-        #)
+        resume_path = get_checkpoint_path(
+            log_root_path, run_dir=f".*_{algorithm}_{args_cli.ml_framework}", other_dirs=["checkpoints"]
+        )
         pass
 
     #print("resume_path: ", resume_path)
     # resume_path:  /home/kimbring2/isaac_lab_jetbot_orin/logs/skrl/jetbot_orin_direct/
     # 2026-03-19_09-53-15_ppo_torch/checkpoints/agent_100000.pt
-
+    '''
     # Debug purpose - For selecting checkpoint manually
-    
     root_path = '/media/kimbring2/be356a87-def6-4be8-bad2-077951f0f3da/isaac_lab_jetbot_orin/logs/skrl/jetbot_orin_direct'
-    folder_name = '2026-04-11_08-41-12_ppo_torch'
+    folder_name = '2026-04-13_20-11-42_ppo_torch'
     resume_path = os.path.join(root_path, folder_name)
     resume_path = os.path.join(resume_path, "checkpoints")
-    epoch = 150000
+    epoch = 10000
     file_name = "agent_{}.pt".format(epoch)
     resume_path = os.path.join(resume_path, file_name)
-    
+    '''
     log_dir = os.path.dirname(os.path.dirname(resume_path))
     
     # create isaac environment

@@ -34,7 +34,7 @@ from isaacsim.core.utils.extensions import enable_extension
 import isaacsim.core.utils.prims as prim_utils
 from isaacsim.core.utils.xforms import get_world_pose
 
-import isaacsim.util.debug_draw._debug_draw as _debug_draw
+#import isaacsim.util.debug_draw._debug_draw as _debug_draw
 
 def quat_to_euler(q):
     """
@@ -261,6 +261,11 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         self.total_step = 0
         self.total_reward = torch.zeros((self.num_envs, 1), device=self.device, dtype=torch.float32)
 
+        #self.frame_buffer = torch.zeros(
+        #    (self.num_envs, 4, 3, 64, 64), device=self.device
+        #)
+
+
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
         self.actions = actions.clone()
 
@@ -293,7 +298,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         self.forwards = math_utils.quat_apply(self.robot.data.root_link_quat_w, self.robot.data.FORWARD_VEC_B)
 
         forward_speed = self.robot.data.root_com_lin_vel_b[:,0].reshape(-1,1)
-        #print("forward_speed: ", forward_speed)
+        #print("forward_speed: ", -forward_speed)
         obs = -forward_speed
 
         left_camera_image = self.scene["left_camera"].data.output["rgb"]
@@ -306,7 +311,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         left_camera_gray = (left_camera_input * weights).sum(dim=1, keepdim=True)
         left_camera_gray = F.interpolate(left_camera_gray, size=(64, 64), mode='bilinear', align_corners=False)
 
-        right_camera_input = right_camera_image.permute(0, 3, 1, 2).float()  / 255.0
+        right_camera_input = right_camera_image.permute(0, 3, 1, 2).float() / 255.0
         right_camera_gray = (right_camera_input * weights).sum(dim=1, keepdim=True)
         right_camera_gray = F.interpolate(right_camera_gray, size=(64, 64), mode='bilinear', align_corners=False)
 
@@ -322,6 +327,11 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         combined_input = torch.cat([left_camera_gray, scalar_map], dim=1)
         #combined_input = left_camera_gray
         combined_input = torch.cat([combined_input, right_camera_gray], dim=1)
+
+        #self.frame_buffer = torch.roll(self.frame_buffer, shifts=-1, dims=1)
+        #self.frame_buffer[:, -1, :, :, :] = combined_input
+        #print("self.frame_buffer.shape: : ", self.frame_buffer.shape)
+        #observations = {"policy": self.frame_buffer}
 
         observations = {"policy": combined_input}
 
@@ -367,6 +377,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
             self._reset_idx(reach_goal_env_ids)
 
         forward_reward = -self.robot.data.root_com_lin_vel_b[:,0].reshape(-1,1)
+        #print("forward_reward: ", forward_reward / 10.0)
         total_reward += forward_reward / 10.0
 
         # Inside _get_rewards
@@ -448,7 +459,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
                     #self.draw.draw_lines(draw_starts, draw_ends, colors, [10.0] * len(draw_starts))
         
         self.total_reward += total_reward
-        reset_mask = self.total_reward.squeeze(-1) > 3.0
+        reset_mask = self.total_reward.squeeze(-1) > 5.0
 
         # 2. Get the indices of those environments
         env_ids = reset_mask.nonzero(as_tuple=False).flatten()

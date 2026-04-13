@@ -83,12 +83,12 @@ class JetbotEventCfg:
     )
     '''
 
- 
+
 @configclass
 class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
     # env
-    decimation = 8
-    episode_length_s = 30.0
+    decimation = 4
+    episode_length_s = 20.0
     
     # - spaces definition
     action_space = spaces.Box(low=-7.5, high=7.5, shape=(2,), dtype=np.float32)
