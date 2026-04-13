@@ -33,7 +33,7 @@ A project to train a vehicle-type robot to drive well in a duckietown environmen
   - Running a training task:
     
     ```bash
-    python scripts/skrl/train.py --task=Isaac-Lab-Jetbot-Orin-Direct-v0 --enable_cameras --num_envs 1
+    python scripts/skrl/train.py --task=Isaac-Lab-Jetbot-Orin-Direct-v0 --enable_cameras --num_envs 64 --video --headles
     ```
   
   - Running a playing task:
