@@ -300,6 +300,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         forward_speed = self.robot.data.root_com_lin_vel_b[:,0].reshape(-1,1)
         #print("forward_speed: ", -forward_speed)
         obs = -forward_speed
+        print("obs: ", obs)
 
         left_camera_image = self.scene["left_camera"].data.output["rgb"]
         right_camera_image = self.scene["right_camera"].data.output["rgb"]

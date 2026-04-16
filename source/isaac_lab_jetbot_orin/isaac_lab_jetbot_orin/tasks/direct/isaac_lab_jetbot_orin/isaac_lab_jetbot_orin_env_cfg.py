@@ -30,7 +30,7 @@ from isaac_lab_jetbot_orin.randomization.motor_dr import randomize_motor_paramet
 @configclass
 class JetbotEventCfg:
     # Randomize lights at every episode reset
-    '''
+    
     randomize_env_lights = EventTerm(
         func=randomize_lights,
         mode="reset",
@@ -39,6 +39,7 @@ class JetbotEventCfg:
             "color_range": ((0.4, 0.4, 0.4), (1.0, 1.0, 1.0)),
         },
     )
+    '''
     startup_track_randomization = EventTerm(
         func=change_track_texture,
         mode="startup",
@@ -55,7 +56,7 @@ class JetbotEventCfg:
             "texture_folder_path": "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/textures",
         },
     )
-    
+    '''
     randomize_curtain_appearance = EventTerm(
         func=change_curtain_texture,
         mode="interval", # Change from 'reset' to 'interval'
@@ -81,8 +82,7 @@ class JetbotEventCfg:
             "stiffness_range": (0.0, 5.0),
         },
     )
-    '''
-
+    
 
 @configclass
 class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
@@ -110,7 +110,7 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
     # Track Configuration
     # We use AssetBaseCfg for a static mesh that doesn't need joint control
     #usd_path = os.path.join(os.getcwd(), "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/simple_straight_track.usd")
-    usd_path = os.path.join(os.getcwd(), "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/simple_curved_track.usd")
+    usd_path = os.path.join(os.getcwd(), "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/simple_curved_track_out.usd")
     #usd_path = os.path.join(os.getcwd(), "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/starter_kit_track.usd")
 
     track_cfg = RigidObjectCfg(
