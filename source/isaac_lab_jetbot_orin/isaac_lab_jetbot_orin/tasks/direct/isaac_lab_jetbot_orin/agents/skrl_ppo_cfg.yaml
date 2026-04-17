@@ -19,15 +19,15 @@ models:
         input: STATES  # skrl handles the [8, 480, 640] shape automatically if defined in env
         layers:
           # Reduced from 32 to 16 filters
-          - conv2d: {out_channels: 32, kernel_size: 5, stride: 2}
+          - conv2d: {out_channels: 64, kernel_size: 5, stride: 2}
           # Reduced from 64 to 32 filters
-          - conv2d: {out_channels: 64, kernel_size: 3, stride: 2}
+          - conv2d: {out_channels: 128, kernel_size: 3, stride: 2}
           # Reduced from 64 to 32 filters
-          - conv2d: {out_channels: 64, kernel_size: 3, stride: 1}
+          - conv2d: {out_channels: 128, kernel_size: 3, stride: 1}
           - flatten
           # Reduced feature fusion from 512 to 256
-          - linear: {out_features: 512}
-          - linear: {out_features: 512}
+          - linear: {out_features: 1024}
+          - linear: {out_features: 1024}
         activations:
           - elu
           - elu
@@ -43,12 +43,12 @@ models:
       - name: net
         input: STATES
         layers:
-          - conv2d: {out_channels: 32, kernel_size: 5, stride: 2}
-          - conv2d: {out_channels: 64, kernel_size: 3, stride: 2}
-          - conv2d: {out_channels: 64, kernel_size: 3, stride: 1}
+          - conv2d: {out_channels: 64, kernel_size: 5, stride: 2}
+          - conv2d: {out_channels: 128, kernel_size: 3, stride: 2}
+          - conv2d: {out_channels: 128, kernel_size: 3, stride: 1}
           - flatten
-          - linear: {out_features: 512}
-          - linear: {out_features: 512}
+          - linear: {out_features: 1024}
+          - linear: {out_features: 1024}
         activations:
           - elu
           - elu
@@ -106,5 +106,5 @@ agent:
 # https://skrl.readthedocs.io/en/latest/api/trainers/sequential.html
 trainer:
   class: SequentialTrainer
-  timesteps: 20000
+  timesteps: 50000
   environment_info: log
