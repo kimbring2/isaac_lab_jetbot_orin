@@ -47,7 +47,6 @@ class JetbotEventCfg:
         },
     )
     '''
-    
     randomize_track_appearance = EventTerm(
         func=change_track_texture,
         mode="interval",
@@ -57,7 +56,6 @@ class JetbotEventCfg:
         },
     )
     '''
-
     randomize_curtain_appearance = EventTerm(
         func=change_curtain_texture,
         mode="interval", # Change from 'reset' to 'interval'

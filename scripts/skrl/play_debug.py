@@ -70,6 +70,35 @@ import numpy as np
 import skrl
 from packaging import version
 
+# Debug purpose - For keyboard manual control
+
+from pynput import keyboard
+
+key_input = 'f'
+
+def on_press(key):
+    global key_input
+    try:
+        # For alphanumeric keys (a-z, 0-9)
+        key_input = key.char
+    except AttributeError:
+        # For special keys (Space, Arrows, etc.)
+        # key.char doesn't exist here, so we use str(key) or a specific name
+        key_input = str(key) 
+        # Example: if you press Space, key_input will be 'Key.space'
+
+
+def on_release(key):
+    global key_input
+    #print('{0} released'.format(key))
+    key_input = 'f'
+    if key == keyboard.Key.esc:
+        # Stop listener
+        return False
+
+listener = keyboard.Listener(on_press=on_press, on_release=on_release)
+listener.start()
+
 
 # check for minimum supported skrl version
 SKRL_VERSION = "1.4.2"
@@ -137,7 +166,21 @@ def main():
         resume_path = get_checkpoint_path(
             log_root_path, run_dir=f".*_{algorithm}_{args_cli.ml_framework}", other_dirs=["checkpoints"]
         )
+        pass
 
+    #print("resume_path: ", resume_path)
+    # resume_path:  /home/kimbring2/isaac_lab_jetbot_orin/logs/skrl/jetbot_orin_direct/
+    # 2026-03-19_09-53-15_ppo_torch/checkpoints/agent_100000.pt
+    
+    # Debug purpose - For selecting checkpoint manually
+    root_path = '/home/kimbring2/isaac_lab_jetbot_orin/logs/skrl/jetbot_orin_direct'
+    folder_name = '2026-04-18_12-50-18_ppo_torch'
+    resume_path = os.path.join(root_path, folder_name)
+    resume_path = os.path.join(resume_path, "checkpoints")
+    epoch = 25000
+    file_name = "agent_{}.pt".format(epoch)
+    resume_path = os.path.join(resume_path, file_name)
+    
     log_dir = os.path.dirname(os.path.dirname(resume_path))
     
     # create isaac environment
@@ -154,6 +197,7 @@ def main():
         dt = env.unwrapped.step_dt
 
     # wrap for video recording
+    '''
     if args_cli.video:
         video_kwargs = {
             "video_folder": os.path.join(log_dir, "videos", "play"),
@@ -164,7 +208,8 @@ def main():
         print("[INFO] Recording videos during training.")
         print_dict(video_kwargs, nesting=4)
         env = gym.wrappers.RecordVideo(env, **video_kwargs)
-    
+    '''
+
     # wrap around environment for skrl
     env = SkrlVecEnvWrapper(env, ml_framework=args_cli.ml_framework)  # same as: `wrap_env(env, wrapper="auto")`
 
@@ -204,6 +249,65 @@ def main():
             
             # env stepping
             # print information from the sensors
+            # Debug purpose - For rendering camera sensor image
+            
+            left_camera_image = env.scene["left_camera"].data.output["rgb"]
+            left_camera_image_0 = left_camera_image.cpu().numpy()
+
+            # Convert RGB directly to GRAY
+            #print("left_camera_image_0.shape: ", left_camera_image_0.shape)
+            #left_camera_gray_0 = cv2.cvtColor(left_camera_image_0, cv2.COLOR_RGB2GRAY)
+            right_camera_image = env.scene["right_camera"].data.output["rgb"][0]
+
+            weights = torch.tensor([0.2989, 0.5870, 0.1140], device='cuda:0').view(1, 3, 1, 1)
+
+            # 2. Pre-process Left Camera
+            # Shape changes: [B, H, W, 3] -> [B, 3, H, W]
+            left_camera_image = left_camera_image.permute(0, 3, 1, 2).float()
+            #print("left_camera_image.shape: ", left_camera_image.shape)
+            left_camera_image = F.interpolate(left_camera_image, size=(64, 64), mode='bilinear', align_corners=False)
+            left_camera_image = left_camera_image / 255.0
+            left_gray = (left_camera_image * weights).sum(dim=1, keepdim=True)
+            #left_gray = VF.rgb_to_grayscale(left_gray, num_output_channels=1)
+
+            # 3. Pre-process Right Camera
+            #right_input = right_camera_image.permute(2, 0, 1).float()
+            #right_gray = (right_input * weights).sum(dim=1, keepdim=True)
+
+            # 4. Resize if necessary
+            #right_gray_resized = F.interpolate(right_gray, size=(64, 64), mode='bilinear', align_corners=False)
+
+            #stereo_obs = torch.cat([left_gray_resized, right_gray_resized], dim=1)
+
+            left_gray_resized = left_gray.cpu().numpy()[0]
+            #print("left_gray_resized.shape: ", left_gray_resized.shape)
+
+            left_gray_resized = np.transpose(left_gray_resized, axes=(1, 2, 0))
+            left_gray_resized = np.squeeze(left_gray_resized) * 255.0
+            left_gray_resized = left_gray_resized.astype(np.uint8) 
+            #print("left_gray_resized.shape: ", left_gray_resized.shape)
+            #print("left_camera_gray_0.shape: ", left_camera_gray_0.shape)
+            #cv2.imshow('Stereo View Of Robot 1', left_gray_resized)
+            #cv2.imshow('Stereo View Of Robot 2', combined_image_1)
+            #cv2.waitKey(1) # Required for the window to refresh
+            
+            # Debug purpose - For keyboard manual control
+            '''
+            action_value = 7.5
+            if key_input == 'w':
+                actions = torch.tensor([action_value, action_value], device='cuda:0')
+            elif key_input == 'a':
+                actions = torch.tensor([-action_value, action_value], device='cuda:0')
+            elif key_input == 'd':
+                actions = torch.tensor([action_value, -action_value], device='cuda:0')
+            elif key_input == 's':
+                actions = torch.tensor([-action_value, -action_value], device='cuda:0')
+            else:
+                actions = torch.tensor([0.0, 0.0], device='cuda:0')
+            '''
+            #actions = torch.clamp(actions, min=-7.5, max=7.5)
+            #print("actions: ", actions)
+
             obs, _, _, _, _ = env.step(actions)
 
         if args_cli.video:
