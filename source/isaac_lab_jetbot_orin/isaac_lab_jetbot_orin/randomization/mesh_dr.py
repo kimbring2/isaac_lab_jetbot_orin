@@ -55,8 +55,9 @@ def change_track_texture(
     new_texture_paths = os.path.join(os.getcwd(), texture_folder_path)
     for i, env_id in enumerate(env_ids.tolist()):
         # 3. Select one path randomly
-        #image_id = random.randint(1, 100)
-        image_id = env_id + 1
+        image_id = random.randint(1, 100)
+        #image_id = env_id + 1
+        #print("image_id: ", image_id)
 
         new_straight_texture_path = os.path.join(new_texture_paths, "straight/straight_{}.png".format(image_id))
         new_curve_texture_path = os.path.join(new_texture_paths, "curve_left/curve_left_{}.png".format(image_id))

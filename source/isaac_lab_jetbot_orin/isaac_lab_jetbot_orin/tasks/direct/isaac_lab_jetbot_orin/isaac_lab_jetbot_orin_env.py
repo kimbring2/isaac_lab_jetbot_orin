@@ -321,7 +321,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         H, W = left_camera_gray.shape[2], left_camera_gray.shape[3]
 
         # Reshape [2, 2] -> [2, 2, 1, 1] then tile to [2, 2, 480, 640]
-        scalar_map = obs.view(B, S, 1, 1).expand(-1, -1, H, W)
+        scalar_map = obs.view(B, S, 1, 1).expand(-1, -1, H, W) / 2.0
 
         # left_camera_input.shape:  torch.Size([2, 3, 480, 640])
         # scalar_map.shape:  torch.Size([2, 2, 480, 640])

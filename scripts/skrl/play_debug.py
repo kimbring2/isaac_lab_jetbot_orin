@@ -250,46 +250,38 @@ def main():
             # env stepping
             # print information from the sensors
             # Debug purpose - For rendering camera sensor image
-            
             left_camera_image = env.scene["left_camera"].data.output["rgb"]
             left_camera_image_0 = left_camera_image.cpu().numpy()
-
-            # Convert RGB directly to GRAY
-            #print("left_camera_image_0.shape: ", left_camera_image_0.shape)
-            #left_camera_gray_0 = cv2.cvtColor(left_camera_image_0, cv2.COLOR_RGB2GRAY)
-            right_camera_image = env.scene["right_camera"].data.output["rgb"][0]
-
+            right_camera_image = env.scene["right_camera"].data.output["rgb"]
+            right_camera_image_0 = right_camera_image.cpu().numpy()
             weights = torch.tensor([0.2989, 0.5870, 0.1140], device='cuda:0').view(1, 3, 1, 1)
 
             # 2. Pre-process Left Camera
             # Shape changes: [B, H, W, 3] -> [B, 3, H, W]
             left_camera_image = left_camera_image.permute(0, 3, 1, 2).float()
-            #print("left_camera_image.shape: ", left_camera_image.shape)
             left_camera_image = F.interpolate(left_camera_image, size=(64, 64), mode='bilinear', align_corners=False)
             left_camera_image = left_camera_image / 255.0
             left_gray = (left_camera_image * weights).sum(dim=1, keepdim=True)
-            #left_gray = VF.rgb_to_grayscale(left_gray, num_output_channels=1)
-
-            # 3. Pre-process Right Camera
-            #right_input = right_camera_image.permute(2, 0, 1).float()
-            #right_gray = (right_input * weights).sum(dim=1, keepdim=True)
-
-            # 4. Resize if necessary
-            #right_gray_resized = F.interpolate(right_gray, size=(64, 64), mode='bilinear', align_corners=False)
-
-            #stereo_obs = torch.cat([left_gray_resized, right_gray_resized], dim=1)
 
             left_gray_resized = left_gray.cpu().numpy()[0]
-            #print("left_gray_resized.shape: ", left_gray_resized.shape)
-
             left_gray_resized = np.transpose(left_gray_resized, axes=(1, 2, 0))
             left_gray_resized = np.squeeze(left_gray_resized) * 255.0
             left_gray_resized = left_gray_resized.astype(np.uint8) 
-            #print("left_gray_resized.shape: ", left_gray_resized.shape)
-            #print("left_camera_gray_0.shape: ", left_camera_gray_0.shape)
-            #cv2.imshow('Stereo View Of Robot 1', left_gray_resized)
-            #cv2.imshow('Stereo View Of Robot 2', combined_image_1)
-            #cv2.waitKey(1) # Required for the window to refresh
+
+            # 3. Pre-process Right Camera
+            right_camera_image = right_camera_image.permute(0, 3, 1, 2).float()
+            right_camera_image = F.interpolate(right_camera_image, size=(64, 64), mode='bilinear', align_corners=False)
+            right_camera_image = right_camera_image / 255.0
+            right_gray = (right_camera_image * weights).sum(dim=1, keepdim=True)
+
+            right_gray_resized = right_gray.cpu().numpy()[0]
+            right_gray_resized = np.transpose(right_gray_resized, axes=(1, 2, 0))
+            right_gray_resized = np.squeeze(right_gray_resized) * 255.0
+            right_gray_resized = right_gray_resized.astype(np.uint8) 
+
+            cv2.imshow('Left Camera', left_gray_resized)
+            cv2.imshow('Right Camera', right_gray_resized)
+            cv2.waitKey(1) # Required for the window to refresh
             
             # Debug purpose - For keyboard manual control
             '''
@@ -298,7 +290,7 @@ def main():
                 actions = torch.tensor([action_value, action_value], device='cuda:0')
             elif key_input == 'a':
                 actions = torch.tensor([-action_value, action_value], device='cuda:0')
-            elif key_input == 'd':
+            elif key_input ==  'd':
                 actions = torch.tensor([action_value, -action_value], device='cuda:0')
             elif key_input == 's':
                 actions = torch.tensor([-action_value, -action_value], device='cuda:0')
