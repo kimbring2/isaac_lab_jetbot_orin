@@ -50,8 +50,6 @@ After training Jetbot in a virtual space, you will need to check whether it beha
   
   ![](images/duckietown_track_shop.png)
 
-
-
 - Robot: You can buy the robot of simulator from [Jetbot Orin AI Kit](https://test-bed-robot-for-ai.myshopify.com/products/jetbot-orin?variant=53153578844525).
   
   ![](images/jebot_orin_shop.png)
@@ -65,3 +63,9 @@ After training Jetbot in a virtual space, you will need to check whether it beha
   Please open and test the copied weight through [live_demo.ipynb](https://github.com/kimbring2/jetbot/blob/jetbot-orin/notebooks/sim_to_real/live_demo.ipynb "live_demo.ipynb") Notebook.
   
   <img title="" src="images/checkpoint_3.png" alt="" width="720">
+
+
+
+- Current testing result: It is not perfect, but it tends to move as learned in the simulation.
+  
+  ![설명](./images/real_demo.gif)
