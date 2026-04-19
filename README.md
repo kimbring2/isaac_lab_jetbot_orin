@@ -42,11 +42,13 @@ A project to train a vehicle-type robot to drive well in a duckietown environmen
     python scripts/skrl/play.py --task=Isaac-Lab-Jetbot-Orin-Direct-v0 --num_envs 1 --enable_cameras
     ```
 
+  - You can download [the best pretrained model](https://drive.google.com/file/d/11-kQCgOM7ef8yfKVTJModASCDQSy9cy4/view?usp=drive_link).
+
 ## Sim to Real
 
-After training Jetbot in a virtual space, you will need to check whether it behaves well in the real world. The list of material for that experiment is as follows.
+After training Jetbot in a virtual space, you will need to check whether it behaves well in the real world. The list of materials for that experiment is as follows.
 
-- Track: You can buy the track of simulator from [Navigation Starter Pack](https://get.duckietown.com/products/duckietown-navigation-starter-pack?srsltid=AfmBOooxVkau2kOaG1PVr42yN5sW3LXgE4aZnoAO3JZxI6DdPAChaQrD).
+- Track: You can buy the track of the simulator from [Navigation Starter Pack](https://get.duckietown.com/products/duckietown-navigation-starter-pack?srsltid=AfmBOooxVkau2kOaG1PVr42yN5sW3LXgE4aZnoAO3JZxI6DdPAChaQrD).
   
   ![](images/duckietown_track_shop.png)
 
