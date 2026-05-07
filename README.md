@@ -33,7 +33,7 @@ A project to train a vehicle-type robot to drive well in a duckietown environmen
   - Running a training task:
     
     ```bash
-    python scripts/skrl/train.py --task=Isaac-Lab-Jetbot-Orin-Direct-v0 --enable_cameras --num_envs 100 --video --headles
+    python scripts/skrl/train.py --task=Isaac-Lab-Jetbot-Orin-Direct-v0 --enable_cameras --num_envs 100 --video --headless
     ```
   
   - Running a playing task:
@@ -52,7 +52,7 @@ After training Jetbot in a virtual space, you will need to check whether it beha
   
   ![](images/duckietown_track_shop.png)
 
-- Robot: You can buy the robot of simulator from [Jetbot Orin AI Kit](https://test-bed-robot-for-ai.myshopify.com/products/jetbot-orin?variant=53153578844525).
+- Robot: You can buy the robot simulator from [Jetbot Orin AI Kit](https://test-bed-robot-for-ai.myshopify.com/products/jetbot-orin?variant=53153578844525).
   
   ![](images/jebot_orin_shop.png)
 
