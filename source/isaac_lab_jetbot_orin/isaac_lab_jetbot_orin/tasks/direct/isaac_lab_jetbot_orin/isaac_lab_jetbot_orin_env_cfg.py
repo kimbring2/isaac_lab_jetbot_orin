@@ -15,6 +15,7 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sim import SimulationCfg
 from isaaclab.sensors import CameraCfg, TiledCameraCfg
 from isaaclab.utils import configclass
+from isaaclab.utils.noise import GaussianNoiseCfg, NoiseModelWithAdditiveBiasCfg
 import isaaclab.sim as sim_utils
 import isaaclab.envs.mdp as mdp
 
@@ -81,8 +82,8 @@ class JetbotEventCfg:
             "stiffness_range": (0.0, 5.0),
         },
     )
-    
 
+    
 @configclass
 class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
     # env
@@ -168,3 +169,10 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
     )
 
     dof_names = ["left_wheel_joint", "right_wheel_joint"]
+
+    # at every time-step add gaussian noise + bias. The bias is a gaussian sampled at reset
+    observation_noise_model: NoiseModelWithAdditiveBiasCfg = NoiseModelWithAdditiveBiasCfg(
+        noise_cfg=GaussianNoiseCfg(mean=0.0, std=0.01, operation="add"),
+        bias_noise_cfg=GaussianNoiseCfg(mean=0.0, std=0.005, operation="abs"),
+    )
+    
