@@ -283,7 +283,6 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         self.robot.set_joint_velocity_target(self.actions, joint_ids=self.dof_idx)
 
     def _get_observations(self) -> dict:
-        #print("self.total_step: ", self.total_step)
         robot_pos = self.robot.data.root_pos_w
         robot_z_position = robot_pos[:, 2]
 
@@ -298,9 +297,7 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         self.forwards = math_utils.quat_apply(self.robot.data.root_link_quat_w, self.robot.data.FORWARD_VEC_B)
 
         forward_speed = self.robot.data.root_com_lin_vel_b[:,0].reshape(-1,1)
-        #print("forward_speed: ", -forward_speed)
         obs = -forward_speed
-        #print("obs: ", obs)
 
         left_camera_image = self.scene["left_camera"].data.output["rgb"]
         right_camera_image = self.scene["right_camera"].data.output["rgb"]
@@ -316,23 +313,32 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         right_camera_gray = (right_camera_input * weights).sum(dim=1, keepdim=True)
         right_camera_gray = F.interpolate(right_camera_gray, size=(64, 64), mode='bilinear', align_corners=False)
 
-        # 2. Expand scalar_obs to match image spatial dimensions [480, 640]
+
+
+        # Define noise intensity (0.02 is a good starting point for moderate noise)
+        cam_noise_std = 0.02 
+
+        # Add Gaussian noise to left camera
+        left_noise = torch.randn_like(left_camera_gray) * cam_noise_std
+        left_camera_gray = torch.clamp(left_camera_gray + left_noise, 0.0, 1.0)
+
+        # Add Gaussian noise to right camera
+        right_noise = torch.randn_like(right_camera_gray) * cam_noise_std
+        right_camera_gray = torch.clamp(right_camera_gray + right_noise, 0.0, 1.0)
+
+        #mask = torch.rand_like(left_camera_gray) > 0.01
+        #left_camera_gray *= mask
+        #right_camera_gray *= mask
+
+        # Expand scalar_obs to match image spatial dimensions [480, 640]
         B, S = obs.shape
         H, W = left_camera_gray.shape[2], left_camera_gray.shape[3]
 
         # Reshape [2, 2] -> [2, 2, 1, 1] then tile to [2, 2, 480, 640]
         scalar_map = obs.view(B, S, 1, 1).expand(-1, -1, H, W) / 2.0
 
-        # left_camera_input.shape:  torch.Size([2, 3, 480, 640])
-        # scalar_map.shape:  torch.Size([2, 2, 480, 640])
         combined_input = torch.cat([left_camera_gray, scalar_map], dim=1)
-        #combined_input = left_camera_gray
         combined_input = torch.cat([combined_input, right_camera_gray], dim=1)
-
-        #self.frame_buffer = torch.roll(self.frame_buffer, shifts=-1, dims=1)
-        #self.frame_buffer[:, -1, :, :, :] = combined_input
-        #print("self.frame_buffer.shape: : ", self.frame_buffer.shape)
-        #observations = {"policy": self.frame_buffer}
 
         observations = {"policy": combined_input}
 

@@ -47,7 +47,7 @@ class JetbotEventCfg:
             "texture_folder_path": "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/textures",
         },
     )
-    '''
+    
     randomize_track_appearance = EventTerm(
         func=change_track_texture,
         mode="interval",
@@ -56,7 +56,7 @@ class JetbotEventCfg:
             "texture_folder_path": "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/textures",
         },
     )
-    '''
+    
     randomize_curtain_appearance = EventTerm(
         func=change_curtain_texture,
         mode="interval", # Change from 'reset' to 'interval'
@@ -171,8 +171,11 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
     dof_names = ["left_wheel_joint", "right_wheel_joint"]
 
     # at every time-step add gaussian noise + bias. The bias is a gaussian sampled at reset
+    '''
     observation_noise_model: NoiseModelWithAdditiveBiasCfg = NoiseModelWithAdditiveBiasCfg(
         noise_cfg=GaussianNoiseCfg(mean=0.0, std=0.01, operation="add"),
         bias_noise_cfg=GaussianNoiseCfg(mean=0.0, std=0.005, operation="abs"),
     )
+    '''
+    
     

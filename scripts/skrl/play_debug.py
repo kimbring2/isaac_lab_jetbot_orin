@@ -306,7 +306,7 @@ def main():
             #print("actions: ", actions)
 
             obs, _, _, _, _ = env.step(actions)
-            #print("obs.shape: ", obs.shape)
+            print("obs.shape: ", obs.shape)
 
             img_tensor = obs[0].view(3, 64, 64)
             img_tensor = img_tensor[0].view(1, 64, 64)
