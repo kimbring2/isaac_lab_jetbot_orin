@@ -177,5 +177,3 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
         bias_noise_cfg=GaussianNoiseCfg(mean=0.0, std=0.005, operation="abs"),
     )
     '''
-    
-    

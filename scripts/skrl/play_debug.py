@@ -130,6 +130,72 @@ import isaaclab.sim as sim_utils
 algorithm = args_cli.algorithm.lower()
 
 
+##########################
+import torch
+import torch.nn as nn
+from skrl.models.torch import GaussianMixin, Model
+from skrl.utils.spaces.torch import unflatten_tensorized_space
+from gymnasium import spaces
+import gymnasium as gym
+import numpy as np
+
+action_space = spaces.Box(low=-7.5, high=7.5, shape=(2,), dtype=np.float32)
+observation_space = spaces.Box(low=-0.0, high=1.0, shape=(3, 64, 64), dtype=np.float32)
+
+class GaussianModel(GaussianMixin, Model):
+    def __init__(self, observation_space, action_space, device, clip_actions=False,
+                 clip_log_std=True, min_log_std=-2, max_log_std=2, reduction="sum"):
+        Model.__init__(self, observation_space, action_space, device)
+        GaussianMixin.__init__(self, clip_actions, clip_log_std, min_log_std, max_log_std, reduction)
+
+        # Note: We use Lazy layers, so we must do a dummy pass before loading weights
+        self.net_container = nn.Sequential(
+            nn.LazyConv2d(out_channels=64, kernel_size=5, stride=2),
+            nn.ELU(),
+            nn.LazyConv2d(out_channels=128, kernel_size=3, stride=2),
+            nn.ELU(),
+            nn.LazyConv2d(out_channels=128, kernel_size=3, stride=1),
+            nn.ELU(),
+            nn.Flatten(),
+            nn.LazyLinear(out_features=1024),
+            nn.ELU(),
+            nn.LazyLinear(out_features=1024),
+            nn.ELU(),
+            nn.LazyLinear(out_features=self.num_actions),
+        )
+        self.log_std_parameter = nn.Parameter(torch.full(size=(self.num_actions,), fill_value=0.0), requires_grad=True)
+
+    def compute(self, inputs, role=""):
+        # The unflatten utility handles the conversion from a flat tensor to 
+        # the (C, H, W) shape expected by your Conv2d layers.
+        states = unflatten_tensorized_space(self.observation_space, inputs.get("states"))
+        output = self.net_container(states)
+        
+        return output, self.log_std_parameter, {}
+
+
+# 2. Instantiate and Load Weights
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
+
+# Replace obs_space and act_space with your environment's actual dimensions
+policy = GaussianModel(observation_space, action_space, device)
+
+# Load the checkpoint6
+checkpoint = torch.load('/home/kimbring2/isaac_lab_jetbot_orin/logs/skrl/jetbot_orin_direct/2026-05-08_05-17-11_ppo_torch/checkpoints/agent_5000.pt', map_location=device)
+
+policy.load_state_dict(checkpoint['policy']) # skrl stores it under 'policy'
+policy.eval()
+
+dummy_input = {"states": torch.zeros((1, 3, 64, 64)).to(device)}
+policy.compute(dummy_input)
+
+
+from skrl.resources.preprocessors.torch import RunningStandardScaler
+from gymnasium import spaces
+##########################
+
+
 def main():
     global key_input
 
@@ -163,9 +229,9 @@ def main():
     elif args_cli.checkpoint:
         resume_path = os.path.abspath(args_cli.checkpoint)
     else:
-        #resume_path = get_checkpoint_path(
-        #    log_root_path, run_dir=f".*_{algorithm}_{args_cli.ml_framework}", other_dirs=["checkpoints"]
-        #)
+        resume_path = get_checkpoint_path(
+            log_root_path, run_dir=f".*_{algorithm}_{args_cli.ml_framework}", other_dirs=["checkpoints"]
+    )
         pass
 
     #print("resume_path: ", resume_path)
@@ -182,8 +248,8 @@ def main():
     file_name = "agent_{}.pt".format(epoch)
     resume_path = os.path.join(resume_path, file_name)
     
-    log_dir = os.path.dirname(os.path.dirname(resume_path))
     '''
+    log_dir = os.path.dirname(os.path.dirname(resume_path))
 
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
@@ -223,7 +289,7 @@ def main():
     runner = Runner(env, experiment_cfg)
 
     #print(f"[INFO] Loading model checkpoint from: {resume_path}")
-    #runner.agent.load(resume_path)
+    runner.agent.load(resume_path)
     
     # set agent to evaluation mode
     runner.agent.set_running_mode("eval")
@@ -233,13 +299,33 @@ def main():
     timestep = 0
 
     # simulate environment
+    # Define the number of features in your observation
+    num_observations = env.observation_space.shape[0] 
+
+    # Initialize the scaler
+    # 'device' should match your obs (e.g., 'cuda:0' or 'cpu')
+    # 1. Define the shape (3 channels, 64 height, 64 width)
+    obs_shape = (3, 64, 64)
+
+    # 2. Declare the scaler
+    # We pass the shape and specify the torch device and dtype
+    state_preprocessor = RunningStandardScaler(size=obs_shape, device='cuda:0')
+
+    # IMPORTANT: If you are loading a trained agent, 
+    # you should load the scaler's state as well:
+    state_preprocessor.load_state_dict(checkpoint['state_preprocessor'])
+
+    # Set to eval mode for inference so it doesn't update mean/var statistics
+    state_preprocessor.eval()
+
     while simulation_app.is_running():
         start_time = time.time()
 
         # run everything in inference mode
         with torch.inference_mode():
             # agent stepping
-            #print("rize_track_scaleunner.agent: ", runner.agent)
+            #print("runner.agent._state_preprocessor: ", runner.agent._state_preprocessor)
+
             outputs = runner.agent.act(obs, timestep=0, timesteps=0)
             
             # - multi-agent (deterministic) actions
@@ -249,6 +335,28 @@ def main():
             else:
                 actions = outputs[-1].get("mean_actions", outputs[0])
             
+            # 1. PREPROCESSING: Scale the observations before passing to the policy
+            # We use the agent's internal preprocessor if it exists
+            if hasattr(runner.agent, "state_preprocessor") and runner.agent.state_preprocessor is not None:
+                # Note: state_preprocessor expects a tensor and returns a normalized one
+                processed_obs = runner.agent.state_preprocessor(obs)
+            else:
+                processed_obs = obs
+
+            # Using RunningStandardScaler of skrl for part below
+            #processed_obs = runner.agent._state_preprocessor(obs)
+            #print("obs.shape: ", obs.shape)
+            processed_obs = state_preprocessor(obs)
+
+            with torch.no_grad():
+                action, _, _ = policy.act({"states": processed_obs.to('cpu')}, role="policy")
+
+            # Convert the tensor to a numpy array for the robot motors
+            action_np = action.cpu().numpy()[0]
+            #print("action_np: ", action_np)
+            #action_np = np.clip(action_np, -7.5, 7.5) / 30.0
+            actions = torch.tensor([float(action_np[0]), float(action_np[1])], device='cuda:0')
+
             # env stepping
             # print information from the sensors
             # Debug purpose - For rendering camera sensor image
@@ -302,24 +410,29 @@ def main():
             else:
                 actions = torch.tensor([0.0, 0.0], device='cuda:0')
             '''
+
+            #actions = torch.tensor([4.0, 0.0], device='cuda:0')
             #actions = torch.clamp(actions, min=-7.5, max=7.5)
             #print("actions: ", actions)
 
             obs, _, _, _, _ = env.step(actions)
-            print("obs.shape: ", obs.shape)
 
             img_tensor = obs[0].view(3, 64, 64)
-            img_tensor = img_tensor[0].view(1, 64, 64)
+            img_tensor_left = img_tensor[0].view(1, 64, 64)
+            img_tensor_right = img_tensor[2].view(1, 64, 64)
 
             # 2. Transpose to (Height, Width, Channels) for OpenCV/Matplotlib
-            img_np = img_tensor.cpu().numpy().transpose(1, 2, 0)
-            img_resized = cv2.resize(img_np, (256, 256), interpolation=cv2.INTER_LINEAR)
+            img_left_np = img_tensor_left.cpu().numpy().transpose(1, 2, 0)
+            img_right_np = img_tensor_right.cpu().numpy().transpose(1, 2, 0)
+
+            img_left_resized = cv2.resize(img_left_np, (256, 256), interpolation=cv2.INTER_LINEAR)
+            img_right_resized = cv2.resize(img_right_np, (256, 256), interpolation=cv2.INTER_LINEAR)
 
             # 3. Check for noise visually
-            cv2.imshow('Noisy Flattened Obs', img_resized)
-            cv2.waitKey(1)
+            #cv2.imshow('Left Camera', img_left_resized)
+            #cv2.imshow('Right Camera', img_right_resized)
+            #cv2.waitKey(1)
             
-
         if args_cli.video:
             timestep += 1
             
