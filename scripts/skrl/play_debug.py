@@ -412,7 +412,7 @@ def main():
             '''
 
             #actions = torch.tensor([4.0, 0.0], device='cuda:0')
-            #actions = torch.clamp(actions, min=-7.5, max=7.5)
+            actions = torch.clamp(actions, min=-7.5, max=7.5)
             #print("actions: ", actions)
 
             obs, _, _, _, _ = env.step(actions)
@@ -425,8 +425,11 @@ def main():
             img_left_np = img_tensor_left.cpu().numpy().transpose(1, 2, 0)
             img_right_np = img_tensor_right.cpu().numpy().transpose(1, 2, 0)
 
-            img_left_resized = cv2.resize(img_left_np, (256, 256), interpolation=cv2.INTER_LINEAR)
-            img_right_resized = cv2.resize(img_right_np, (256, 256), interpolation=cv2.INTER_LINEAR)
+            img_left_resized = cv2.resize(img_left_np, (64, 64), interpolation=cv2.INTER_AREA)
+            img_left_resized = cv2.resize(img_left_resized, (256, 256), interpolation=cv2.INTER_AREA)
+
+            img_right_resized = cv2.resize(img_right_np, (64, 64), interpolation=cv2.INTER_AREA)
+            img_right_resized = cv2.resize(img_right_resized, (256, 256), interpolation=cv2.INTER_AREA)
 
             # 3. Check for noise visually
             #cv2.imshow('Left Camera', img_left_resized)

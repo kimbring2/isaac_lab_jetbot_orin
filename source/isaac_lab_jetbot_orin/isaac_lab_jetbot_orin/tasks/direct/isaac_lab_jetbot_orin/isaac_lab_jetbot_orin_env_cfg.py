@@ -24,14 +24,14 @@ from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import SceneEntityCfg
 from isaac_lab_jetbot_orin.randomization.light_dr import randomize_lights
 from isaac_lab_jetbot_orin.randomization.mesh_dr import change_track_texture, change_curtain_texture
-from isaac_lab_jetbot_orin.randomization.camera_dr import randomize_camera_parameters
+from isaac_lab_jetbot_orin.randomization.camera_parameter_dr import randomize_camera_parameters
 from isaac_lab_jetbot_orin.randomization.motor_dr import randomize_motor_parameters
+from isaac_lab_jetbot_orin.randomization.camera_pose_dr import randomize_camera_pose
 
 
 @configclass
 class JetbotEventCfg:
     # Randomize lights at every episode reset
-    
     randomize_env_lights = EventTerm(
         func=randomize_lights,
         mode="reset",
@@ -40,18 +40,10 @@ class JetbotEventCfg:
             "color_range": ((0.4, 0.4, 0.4), (1.0, 1.0, 1.0)),
         },
     )
+
     startup_track_randomization = EventTerm(
         func=change_track_texture,
-        mode="startup",
-        params={
-            "texture_folder_path": "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/textures",
-        },
-    )
-    
-    randomize_track_appearance = EventTerm(
-        func=change_track_texture,
-        mode="interval",
-        interval_range_s=(30, 30),
+        mode="reset",
         params={
             "texture_folder_path": "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/textures",
         },
@@ -59,14 +51,12 @@ class JetbotEventCfg:
     
     randomize_curtain_appearance = EventTerm(
         func=change_curtain_texture,
-        mode="interval", # Change from 'reset' to 'interval'
-        interval_range_s=(30, 30), # Fires exactly every 5000 steps
+        mode="reset"
     )
 
     randomize_camera_parameters = EventTerm(
         func=randomize_camera_parameters,
-        mode="interval",
-        interval_range_s=(30, 30),
+        mode="reset",
         params={
             "focal_length_range": (2.3, 2.9),
             "focus_dist_range": (55.0, 66.0)
@@ -75,15 +65,23 @@ class JetbotEventCfg:
 
     randomize_motor_parameters = EventTerm(
         func=randomize_motor_parameters,
-        mode="interval",
-        interval_range_s=(30, 30),
+        mode="reset",
         params={
             "damping_range": (160.0, 190.0),
             "stiffness_range": (0.0, 5.0),
         },
     )
 
-    
+    randomize_camera_pose = EventTerm(
+        func=randomize_camera_pose,
+        mode="reset",
+        params={
+            "pos_jitter": 0.05,       # 5mm movement
+            "rot_jitter_deg": 5.0     # 2 degree wobble
+        },
+    )
+
+
 @configclass
 class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
     # env
@@ -169,11 +167,3 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
     )
 
     dof_names = ["left_wheel_joint", "right_wheel_joint"]
-
-    # at every time-step add gaussian noise + bias. The bias is a gaussian sampled at reset
-    '''
-    observation_noise_model: NoiseModelWithAdditiveBiasCfg = NoiseModelWithAdditiveBiasCfg(
-        noise_cfg=GaussianNoiseCfg(mean=0.0, std=0.01, operation="add"),
-        bias_noise_cfg=GaussianNoiseCfg(mean=0.0, std=0.005, operation="abs"),
-    )
-    '''

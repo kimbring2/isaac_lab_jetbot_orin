@@ -31,9 +31,9 @@ def change_curtain_texture(
 
         # 3. Create a random RGB color
         random_rgb = Gf.Vec3f(
-            np.random.random(), 
-            np.random.random(), 
-            np.random.random()
+            np.random.random() * 0.1, 
+            np.random.random() * 0.1, 
+            np.random.random() * 0.1
         )
 
         # 4. Apply to the diffuse color attribute
