@@ -42,7 +42,7 @@ A project to train a vehicle-type robot to drive well in a duckietown environmen
     python scripts/skrl/play.py --task=Isaac-Lab-Jetbot-Orin-Direct-v0 --num_envs 1 --enable_cameras
     ```
 
-  - You can download [the best pretrained model](https://drive.google.com/file/d/11-kQCgOM7ef8yfKVTJModASCDQSy9cy4/view?usp=drive_link).
+  - You can download [the best pretrained model](https://drive.google.com/file/d/1_miASXXn9zV9eGi__JZVAhy3ieRXKYJF/view?usp=sharing).
 
 ## Sim to Real
 
