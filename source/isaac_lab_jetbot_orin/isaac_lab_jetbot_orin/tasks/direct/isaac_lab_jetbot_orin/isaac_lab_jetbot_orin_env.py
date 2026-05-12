@@ -265,7 +265,6 @@ class IsaacLabJetbotOrinEnv(DirectRLEnv):
         #    (self.num_envs, 4, 3, 64, 64), device=self.device
         #)
 
-
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
         self.actions = actions.clone()
 

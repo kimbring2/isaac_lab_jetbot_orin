@@ -15,7 +15,8 @@ def change_curtain_texture(
     env,
     env_ids
 ):
-    #print("change_curtain_texture, env_ids: ", env_ids)
+    if env_ids is None:
+        env_ids = torch.arange(env.num_envs, device=env.device)
 
     for i, env_id in enumerate(env_ids.tolist()):
         # 1. Base path

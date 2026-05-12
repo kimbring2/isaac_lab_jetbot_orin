@@ -32,9 +32,18 @@ from isaac_lab_jetbot_orin.randomization.camera_pose_dr import randomize_camera_
 @configclass
 class JetbotEventCfg:
     # Randomize lights at every episode reset
+    start_env_lights = EventTerm(
+        func=randomize_lights,
+        mode="startup",
+        params={
+            "intensity_range": (500.0, 4000.0),
+            "color_range": ((0.4, 0.4, 0.4), (1.0, 1.0, 1.0)),
+        },
+    )
     randomize_env_lights = EventTerm(
         func=randomize_lights,
-        mode="reset",
+        mode="interval",
+        interval_range_s=(30, 30),
         params={
             "intensity_range": (500.0, 4000.0),
             "color_range": ((0.4, 0.4, 0.4), (1.0, 1.0, 1.0)),
@@ -43,43 +52,84 @@ class JetbotEventCfg:
 
     startup_track_randomization = EventTerm(
         func=change_track_texture,
-        mode="reset",
+        mode="startup",
+        params={
+            "texture_folder_path": "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/textures",
+        },
+    )
+    randomize_track_appearance = EventTerm(
+        func=change_track_texture,
+        mode="interval",
+        interval_range_s=(30, 30),
         params={
             "texture_folder_path": "source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/textures",
         },
     )
     
+    start_curtain_appearance = EventTerm(
+        func=change_curtain_texture,
+        mode="startup",
+    )
     randomize_curtain_appearance = EventTerm(
         func=change_curtain_texture,
-        mode="reset"
+        mode="interval", # Change from 'reset' to 'interval'
+        interval_range_s=(30, 30), # Fires exactly every 5000 steps
     )
 
+    start_camera_parameters = EventTerm(
+        func=randomize_camera_parameters,
+        mode="startup",
+        params={
+            "focal_length_range": (2.3, 2.9),
+            "focus_dist_range": (55.0, 66.0)
+        },
+    )
     randomize_camera_parameters = EventTerm(
         func=randomize_camera_parameters,
-        mode="reset",
+        mode="interval",
+        interval_range_s=(30, 30),
         params={
             "focal_length_range": (2.3, 2.9),
             "focus_dist_range": (55.0, 66.0)
         },
     )
 
-    randomize_motor_parameters = EventTerm(
+    start_motor_parameters = EventTerm(
         func=randomize_motor_parameters,
-        mode="reset",
+        mode="startup",
         params={
             "damping_range": (160.0, 190.0),
             "stiffness_range": (0.0, 5.0),
         },
     )
-
-    randomize_camera_pose = EventTerm(
-        func=randomize_camera_pose,
-        mode="reset",
+    randomize_motor_parameters = EventTerm(
+        func=randomize_motor_parameters,
+        mode="interval",
+        interval_range_s=(30, 30),
         params={
-            "pos_jitter": 0.05,       # 5mm movement
-            "rot_jitter_deg": 5.0     # 2 degree wobble
+            "damping_range": (160.0, 190.0),
+            "stiffness_range": (0.0, 5.0),
         },
     )
+    
+    start_camera_pose = EventTerm(
+        func=randomize_camera_pose,
+        mode="startup",
+        params={
+            "pos_jitter": 0.025,      # 5 mm movement
+            "rot_jitter_deg": 2.5     # 5 degree wobble
+        },
+    )
+    randomize_camera_pose = EventTerm(
+        func=randomize_camera_pose,
+        mode="interval",
+        interval_range_s=(30, 30),
+        params={
+            "pos_jitter": 0.025,      # 5 mm movement
+            "rot_jitter_deg": 2.5     # 5 degree wobble
+        },
+    )
+    
 
 
 @configclass
@@ -135,8 +185,8 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=2.6, focus_distance=60.0, horizontal_aperture=3.67, clipping_range=(0.01, 5.0)
         ),
-        width=640,
-        height=480,
+        width=320,
+        height=240,
     )
 
     right_tiled_camera: TiledCameraCfg = TiledCameraCfg(
@@ -148,8 +198,8 @@ class IsaacLabJetbotOrinEnvCfg(DirectRLEnvCfg):
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=2.6, focus_distance=60.0, horizontal_aperture=3.67, clipping_range=(0.01, 5.0)
         ),
-        width=640,
-        height=480,
+        width=320,
+        height=240,
     )
 
     # /home/kimbring2/isaac_lab_jetbot_orin/source/isaac_lab_jetbot_orin/assets/Collected_starter_kit_track/textures/straight/straight_1.png
